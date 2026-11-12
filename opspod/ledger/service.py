@@ -8,6 +8,7 @@ retries and duplicate webhooks can never pay twice, even under concurrency.
 
 import uuid
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import func, select
@@ -15,7 +16,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from opspod.core.errors import LedgerError
-from opspod.db.models import Action, LedgerEntry
+from opspod.db.models import Action, Case, LedgerEntry
 from opspod.domain.enums import LedgerKind
 from opspod.domain.money import Money
 
@@ -159,4 +160,34 @@ async def _sum(
         )
     if account is not None:
         stmt = stmt.where(LedgerEntry.account == account)
+    return int((await session.execute(stmt)).scalar_one())
+
+
+async def day_spend(session: AsyncSession, *, region: str, since: datetime) -> int:
+    """Net payouts for a region since `since` (typically start of the UTC day)."""
+    total = 0
+    for kinds, sign in (([k.value for k in PAYOUT_KINDS], 1), ([LedgerKind.REVERSAL.value], -1)):
+        stmt = (
+            select(func.coalesce(func.sum(LedgerEntry.amount), 0))
+            .join(Action, Action.id == LedgerEntry.action_id)
+            .join(Case, Case.id == Action.case_id)
+            .where(
+                Case.region == region, LedgerEntry.created_at >= since, LedgerEntry.kind.in_(kinds)
+            )
+        )
+        total += sign * int((await session.execute(stmt)).scalar_one())
+    return total
+
+
+async def payout_count(session: AsyncSession, *, account: str, since: datetime) -> int:
+    """How many refunds/credits an account received since `since` (frequency cap input)."""
+    stmt = (
+        select(func.count())
+        .select_from(LedgerEntry)
+        .where(
+            LedgerEntry.account == account,
+            LedgerEntry.created_at >= since,
+            LedgerEntry.kind.in_([k.value for k in PAYOUT_KINDS]),
+        )
+    )
     return int((await session.execute(stmt)).scalar_one())

@@ -55,7 +55,14 @@ def build_case(i: int, rng: random.Random) -> dict:
     if variant == "high_value":
         base = auto_limit + rng.randrange(500, 3000) * scale
     prior = rng.randrange(0, 2)
-    fx: dict = {"currency": cur, "total": base, "prior_disputes": prior, "payments": [base]}
+    fx: dict = {
+        "currency": cur,
+        "total": base,
+        "prior_disputes": prior,
+        "refunds_30d": prior,
+        "rider_name": name,
+        "payments": [base],
+    }
     text = f"Hi, this is {name} ({name.split()[0].lower()}@example.com). "
     outcome, amount, route = "FULL_REFUND", base, "auto"
 
@@ -87,7 +94,7 @@ def build_case(i: int, rng: random.Random) -> dict:
         text += "My WELCOME10 promo was not applied."
         outcome, amount = "PARTIAL_REFUND", disc
     else:  # suspicious
-        fx["prior_disputes"] = rng.randrange(4, 9)
+        fx["prior_disputes"] = fx["refunds_30d"] = rng.randrange(4, 9)
         text += "Refund me again, the same thing happened last week."
         tags.add("repeat_disputes")
 

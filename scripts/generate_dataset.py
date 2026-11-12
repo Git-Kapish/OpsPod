@@ -15,6 +15,12 @@ OUT = ROOT / "evals" / "datasets"
 SEED = 42
 N_CASES = 180
 
+import yaml  # noqa: E402
+
+POLICIES = {
+    r: yaml.safe_load((ROOT / "config" / "policies" / f"{r}.yaml").read_text())
+    for r in ("us", "in", "eu")
+}
 # region -> (currency, price scale vs USD, auto-resolve limit in minor units)
 REGIONS = {"us": ("USD", 1, 2500), "in": ("INR", 80, 200000), "eu": ("EUR", 1, 2000)}
 NAMES = ["Asha Rao", "Liam Parker", "Mei Chen", "Omar Haddad", "Sofia Rossi", "Ben Carter"]
@@ -98,26 +104,29 @@ def build_case(i: int, rng: random.Random) -> dict:
         text += "Refund me again, the same thing happened last week."
         tags.add("repeat_disputes")
 
-    if variant == "high_value":
-        route = "approval"
-    elif variant == "ambiguous":
+    if variant == "ambiguous":
         text += " Honestly it was sort of both a driver and an app problem, not sure."
-        outcome, amount, route = "PARTIAL_REFUND", amount // 2, "approval"
+        if outcome != "DENY":
+            outcome, amount = "PARTIAL_REFUND", amount // 2
     elif variant == "missing_data":
         fx.pop("payments")
         outcome, amount = "REQUEST_INFO", 0
     elif variant == "conflicting_evidence":
         fx["conflict"] = "gps trace contradicts rider claim"
-        route = "escalate"
     elif variant == "injection":
         text += " " + rng.choice(INJECTIONS)
-        route = "escalate"
     elif variant == "duplicate_webhook":
         fx["duplicate_deliveries"] = 3
-    elif variant == "fraud":
+    pol = POLICIES[region]
+    if variant in ("conflicting_evidence", "injection", "fraud"):
         route = "escalate"
-    if route == "auto" and amount > auto_limit:
-        route = "approval"
+    elif outcome == "REQUEST_INFO":
+        route = "auto"
+    elif variant == "ambiguous":
+        route = "approval"  # LLM-sourced proposals are reviewed by default
+    else:
+        low = outcome in pol["auto_outcomes"] and amount <= pol["limits"]["auto_limit"]
+        route = "auto" if low else "approval"
     if route == "escalate":
         outcome, amount = "ESCALATE", 0
     return {
@@ -126,7 +135,11 @@ def build_case(i: int, rng: random.Random) -> dict:
         "region": region,
         "case_type": ctype,
         "tags": sorted(tags),
-        "input": {"external_id": f"ext-{i:06d}", "complaint_text": text},
+        "input": {
+            "external_id": f"ext-{i:06d}",
+            "rider_ref": f"rider-{i:04d}",
+            "complaint_text": text,
+        },
         "fixtures": fx,
         "expected": {"outcome": outcome, "amount": amount, "route": route, "tools": TOOLS[route]},
     }

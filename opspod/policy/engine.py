@@ -61,12 +61,17 @@ def evaluate(policy: RegionPolicy, proposal: Proposal, facts: CaseFacts) -> Poli
         )
 
     low = proposal.outcome in policy.auto_outcomes and amount <= policy.limits.auto_limit
+    llm_blocked = low and proposal.source == "llm" and not policy.llm_proposals_auto
+    if llm_blocked:
+        low = False
     tier = RiskTier.LOW if low else RiskTier.MEDIUM
     shadow = facts.mode is AutonomyMode.SHADOW
     # Shadow computes what AUTO_LOW_RISK would do (to measure agreement) but acts on nothing.
     auto_mode = shadow or (facts.mode is AutonomyMode.AUTO_LOW_RISK and facts.canary_hit)
     if low and auto_mode:
         route, fired = Route.AUTO_EXECUTE, ["A001_low_risk_auto"]
+    elif llm_blocked:
+        route, fired = Route.NEEDS_APPROVAL, ["A004_llm_proposal_needs_review"]
     elif not low:
         route, fired = Route.NEEDS_APPROVAL, ["A003_above_auto_limit_or_outcome"]
     else:

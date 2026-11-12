@@ -26,6 +26,7 @@ class RegionPolicy(BaseModel):
     language: str
     allowed_outcomes: list[Outcome]
     auto_outcomes: list[Outcome]
+    llm_proposals_auto: bool = False  # LLM-sourced proposals need review unless a region opts in
     limits: Limits
     thresholds: Thresholds
 

@@ -132,3 +132,15 @@ class Flag(Base):
     value_json: Mapped[dict[str, Any]] = mapped_column(JSONB, default=dict)
     updated_at: Mapped[datetime] = _now()
     updated_by: Mapped[str] = mapped_column(String, default="system")
+
+
+class DeadLetter(Base):
+    __tablename__ = "dead_letters"
+    id: Mapped[uuid.UUID] = _uuid_pk()
+    case_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("cases.id"), index=True)
+    step: Mapped[str] = mapped_column(String)
+    error: Mapped[str] = mapped_column(Text)  # exception type + short message, never raw PII
+    attempts: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = _now()
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_by: Mapped[str | None] = mapped_column(String, nullable=True)

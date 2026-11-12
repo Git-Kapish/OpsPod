@@ -132,3 +132,11 @@ def test_canary_is_stable_and_proportional():
     assert canary_hit("abc", 30) == canary_hit("abc", 30)
     hits = sum(canary_hit(f"case-{i}", 25) for i in range(2000))
     assert 400 < hits < 600
+
+
+def test_llm_proposals_need_review_unless_region_opts_in():
+    llm = Proposal(outcome=Outcome.FULL_REFUND, amount=1000, confidence=0.99, source="llm")
+    d = evaluate(US, llm, facts())
+    assert d.route is Route.NEEDS_APPROVAL and d.rules_fired == ["A004_llm_proposal_needs_review"]
+    opted = US.model_copy(update={"llm_proposals_auto": True})
+    assert evaluate(opted, llm, facts()).route is Route.AUTO_EXECUTE

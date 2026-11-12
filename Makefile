@@ -11,7 +11,7 @@ migrate:
 seed:
 	$(RUN) python scripts/generate_dataset.py
 dev:
-	$(RUN) uvicorn opspod.api.app:app --reload
+	$(RUN) uvicorn opspod.api.main:app --reload
 worker:
 	$(RUN) arq opspod.pipeline.worker.WorkerSettings
 test:

@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>OpsPod console</title>
+<script src="https://unpkg.com/htmx.org@1.9.12" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" crossorigin="anonymous"></script>
+<style>
+ body{font:14px system-ui;margin:0;color:#1b1f24} nav{background:#14213d;padding:10px 20px}
+ nav a{color:#fff;margin-right:16px;text-decoration:none} main{padding:20px;max-width:1100px}
+ table{border-collapse:collapse;width:100%} td,th{border-bottom:1px solid #ddd;padding:6px 8px;text-align:left;vertical-align:top}
+ .pill{padding:2px 8px;border-radius:10px;background:#eef;font-size:12px} button{cursor:pointer}
+ pre{background:#f6f8fa;padding:8px;overflow:auto;max-height:200px;font-size:12px}
+ .ok{color:#116b2c}.bad{color:#b00020}
+</style></head><body>
+<nav><a href="/console/queue">Queue</a><a href="/console/dashboard">Dashboard</a><a href="/console/dlq">DLQ</a></nav>
+<main>{% block body %}{% endblock %}</main></body></html>

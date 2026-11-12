@@ -1,0 +1,13 @@
+{% extends "base.html" %}{% block body %}
+<h2>Dashboard</h2>
+<table>
+<tr><th>Total cases</th><td>{{ s.total_cases }}</td></tr>
+<tr><th>Auto-resolve rate</th><td>{{ "%.1f"|format(s.auto_resolve_rate*100) }}%</td></tr>
+<tr><th>Escalation rate</th><td>{{ "%.1f"|format(s.escalation_rate*100) }}%</td></tr>
+<tr><th>Pending approvals</th><td>{{ s.pending_approvals }}</td></tr>
+<tr><th>Avg approval wait</th><td>{{ s.avg_approval_wait_s if s.avg_approval_wait_s is not none else "n/a" }} s</td></tr>
+<tr><th>Reversal rate</th><td>{{ "%.1f"|format(s.reversal_rate*100) }}%</td></tr>
+<tr><th>DLQ depth</th><td>{{ s.dlq_depth }}</td></tr>
+<tr><th>By status</th><td>{{ s.by_status }}</td></tr>
+<tr><th>By route</th><td>{{ s.by_route }}</td></tr>
+</table>{% endblock %}

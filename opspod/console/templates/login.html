@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block body %}
+<h2>Sign in</h2>
+<form method="post" action="/console/login">
+ <p><label>API key <input name="api_key" required></label></p>
+ <p><label>Role <select name="role"><option>analyst</option><option>approver</option><option>admin</option></select></label></p>
+ <button>Sign in</button>
+</form>{% endblock %}

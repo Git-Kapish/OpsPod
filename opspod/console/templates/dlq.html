@@ -1,0 +1,7 @@
+{% extends "base.html" %}{% block body %}
+<h2>Dead letter queue</h2>
+<table><tr><th>Case</th><th>Error</th><th>Attempts</th><th>When</th><th></th></tr>
+{% for r in rows %}<tr><td><a href="/console/cases/{{ r.case_id }}">{{ r.case_id }}</a></td><td>{{ r.error }}</td><td>{{ r.attempts }}</td><td>{{ r.created_at }}</td>
+<td>{% if r.resolved_at %}resolved by {{ r.resolved_by }}{% elif role in ("approver","admin") %}
+<form method="post" action="/console/dlq/{{ r.id }}/resolve"><button>Mark resolved</button></form>{% endif %}</td></tr>
+{% else %}<tr><td colspan="5">Empty.</td></tr>{% endfor %}</table>{% endblock %}

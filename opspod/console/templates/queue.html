@@ -1,0 +1,17 @@
+{% extends "base.html" %}{% block body %}
+<h2>Approval queue <span class="pill">{{ rows|length }} pending</span></h2>
+<table><tr><th>Case</th><th>Region</th><th>Proposal</th><th>Rules</th><th>Why</th><th>Decide</th></tr>
+{% for a in rows %}
+<tr id="row-{{ a.id }}">
+ <td><a href="/console/cases/{{ a.case_id }}">{{ a.type }}</a></td><td>{{ a.region }}</td>
+ <td>{{ a.outcome }} {{ a.amount }}<br><small>{{ a.source }}</small></td>
+ <td>{{ a.rules|join(", ") }}</td><td>{{ a.rationale }}</td>
+ <td>{% if role in ("approver","admin") %}
+  <form hx-post="/console/approvals/{{ a.id }}/decision" hx-target="#row-{{ a.id }}" hx-swap="outerHTML">
+   <input name="edited_amount" placeholder="edit amount" size="9">
+   <input name="note" placeholder="note" size="12">
+   <button name="decision" value="approve">Approve</button>
+   <button name="decision" value="reject">Reject</button>
+  </form>{% else %}view only{% endif %}</td></tr>
+{% else %}<tr><td colspan="6">Nothing pending.</td></tr>{% endfor %}
+</table>{% endblock %}

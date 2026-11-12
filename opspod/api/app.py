@@ -9,6 +9,8 @@ from pydantic import BaseModel
 from sqlalchemy import select, text
 
 from opspod.api.auth import parse_keys, require_role
+from opspod.api.ops import register_ops
+from opspod.console.routes import register_console
 from opspod.core.config import get_settings
 from opspod.db.models import AuditLog, Case, CaseStep, Decision
 from opspod.domain.enums import Role
@@ -114,4 +116,6 @@ def create_app(deps: Deps, enqueue: Enqueue) -> FastAPI:
             "events": [{"event": e, "at": t.isoformat()} for e, t in audit],
         }
 
+    register_ops(app, deps)
+    register_console(app, deps)
     return app

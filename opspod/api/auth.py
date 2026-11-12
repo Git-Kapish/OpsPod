@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from fastapi import Depends, Header, HTTPException, Request
+from fastapi import Cookie, Depends, Header, HTTPException, Request
 
 from opspod.core.config import get_settings
 from opspod.domain.enums import Role
@@ -21,8 +21,11 @@ def require_role(*allowed: Role) -> Callable[..., Role]:
         request: Request,
         x_api_key: str | None = Header(default=None),
         x_role: str | None = Header(default=None),
+        opspod_key: str | None = Cookie(default=None),  # console login (SameSite=Strict)
+        opspod_role: str | None = Cookie(default=None),
     ) -> Role:
         keys: dict[str, set[Role]] = request.app.state.api_keys
+        x_api_key, x_role = x_api_key or opspod_key, x_role or opspod_role
         roles = keys.get(x_api_key or "")
         if roles is None:
             raise HTTPException(401, "invalid api key")

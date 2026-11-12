@@ -1,0 +1,18 @@
+{% extends "base.html" %}{% block body %}
+<h2>Case {{ case.external_id }} <span class="pill">{{ case.status }}</span></h2>
+<p>{{ case.type }} · {{ case.region }} · replay identical:
+ <b class="{{ 'ok' if replay.identical else 'bad' }}">{{ replay.identical }}</b>
+ {% for d in replay.diffs or [] %}<br><small class="bad">{{ d }}</small>{% endfor %}</p>
+<h3>Decisions</h3>
+<table><tr><th>Source</th><th>Route</th><th>Outcome</th><th>Amount</th><th>Rules</th><th>Rationale</th></tr>
+{% for d in decisions %}<tr><td>{{ d.source }}</td><td>{{ d.route }}</td><td>{{ d.outcome }}</td><td>{{ d.amount }}</td><td>{{ d.policy_rules_fired|join(", ") }}</td><td>{{ d.rationale }}</td></tr>{% endfor %}</table>
+<h3>Actions</h3>
+<table>{% for a in actions %}<tr><td>{{ a.type }}</td><td>{{ a.args_json.amount }} {{ a.args_json.currency }}</td>
+<td>{% if a.reversed_by_action_id %}reversed{% elif a.type != "reversal" and role in ("approver","admin") %}
+<form method="post" action="/console/actions/{{ a.id }}/reverse"><button>Reverse</button></form>{% endif %}</td></tr>
+{% else %}<tr><td>none</td></tr>{% endfor %}</table>
+<h3>Timeline</h3>
+<table>{% for s in steps %}<tr><td>{{ s.step }}</td><td>{{ s.status }}</td><td>attempt {{ s.attempt }}</td></tr>{% endfor %}</table>
+<h3>Audit</h3>
+{% for e in events %}<details><summary>{{ e.event }} <small>{{ e.actor }} {{ e.prompt_version or "" }} {{ e.model or "" }}</small></summary><pre>{{ e.payload_json }}</pre></details>{% endfor %}
+{% endblock %}

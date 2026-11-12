@@ -1,0 +1,4 @@
+# Pinned prompt versions. Changing a pin is a prompt change: it must pass `make eval`.
+classify: v1
+analyze: v1
+draft_message: v1

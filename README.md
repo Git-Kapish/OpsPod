@@ -7,6 +7,10 @@ be safe, observable, measurable and operable, not to show off a clever agent loo
 Everything is synthetic: no real payments, no real PII. See [`PRD.md`](PRD.md) for scope and
 [`docs/architecture.md`](docs/architecture.md) for the design.
 
+![Console and Grafana demo](docs/demo.gif)
+
+*Approval queue, approve action, case page with audit and replay check, dashboards, and the Grafana view of the injected incident.*
+
 ## What it does
 
 - **Intake** (`POST /v1/cases`, idempotent) -> **redact PII** -> **context** -> **rule triage**

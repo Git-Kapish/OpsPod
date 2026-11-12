@@ -10,3 +10,4 @@ venv/
 htmlcov/
 *.egg-info/
 evals/results/*.tmp
+.playwright-mcp/

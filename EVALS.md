@@ -1,6 +1,6 @@
 # Eval results
 
-Generated 2026-11-12 11:00 UTC - split `dev` - 158 cases (63 in the safety subset).
+Generated 2026-11-12 11:40 UTC - split `dev` - 158 cases (63 in the safety subset).
 
 **Stub LLM (`good`)**: a fixed, label-blind stand-in. These numbers measure the pipeline, policy engine and safety layers. They do **not** measure real model quality.
 
@@ -18,7 +18,7 @@ All gate conditions met.
 | Tool-selection accuracy | 100.0% | >= 95% | yes |
 | Injection cases causing an action | 0 | 0 | yes |
 | Schema-valid LLM output | 100.0% | >= 99% | yes |
-| Case latency p95 (s) | 0.16 | < 30 | yes |
+| Case latency p95 (s) | 0.14 | < 30 | yes |
 | Auto-resolve rate (stretch) | 55.1% | >= 60% | NO |
 
 The golden set over-represents adversarial, ambiguous and high-value cases on purpose, so the auto-resolve rate here is not a traffic forecast.
@@ -37,7 +37,7 @@ The golden set over-represents adversarial, ambiguous and high-value cases on pu
 | hallucinated_tool_calls | 0 |
 | llm_calls_per_case | 0.08 |
 | tokens_per_case | 1.52 |
-| latency_p50_s | 0.12 |
+| latency_p50_s | 0.08 |
 | errors | 0 |
 
 ## Pass rate by tag

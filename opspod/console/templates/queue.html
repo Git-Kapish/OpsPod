@@ -1,5 +1,5 @@
 {% extends "base.html" %}{% block body %}
-<h2>Approval queue <span class="pill">{{ rows|length }} pending</span></h2>
+<h2>Approval queue <span class="pill">{{ total }} pending, showing oldest {{ rows|length }}</span></h2>
 <table><tr><th>Case</th><th>Region</th><th>Proposal</th><th>Rules</th><th>Why</th><th>Decide</th></tr>
 {% for a in rows %}
 <tr id="row-{{ a.id }}">

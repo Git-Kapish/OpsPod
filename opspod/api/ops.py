@@ -7,7 +7,7 @@ from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from opspod.api.auth import require_role
 from opspod.core.chaos import CHAOS_KEY, Chaos
@@ -50,7 +50,15 @@ class FlagsIn(BaseModel):
     kill_switch: bool | None = None
 
 
-async def list_pending(deps: Deps, status: str = "pending") -> list[dict[str, Any]]:
+async def count_approvals(deps: Deps, status: str = "pending") -> int:
+    async with deps.sessionmaker() as s:
+        stmt = select(func.count()).select_from(Approval).where(Approval.status == status)
+        return int((await s.execute(stmt)).scalar_one())
+
+
+async def list_pending(
+    deps: Deps, status: str = "pending", limit: int = 100
+) -> list[dict[str, Any]]:
     async with deps.sessionmaker() as s:
         rows = (
             await s.execute(
@@ -59,6 +67,7 @@ async def list_pending(deps: Deps, status: str = "pending") -> list[dict[str, An
                 .join(Case, Case.id == Approval.case_id)
                 .where(Approval.status == status)
                 .order_by(Approval.requested_at)
+                .limit(limit)
             )
         ).all()
     return [
@@ -95,8 +104,10 @@ def http_error(exc: Exception) -> HTTPException:
 
 def register_ops(app: FastAPI, deps: Deps, enqueue: Callable[..., Awaitable[None]]) -> None:
     @app.get("/v1/approvals")
-    async def approvals(status: str = "pending", _: Role = ANALYST_UP) -> list[dict[str, Any]]:
-        return await list_pending(deps, status)
+    async def approvals(
+        status: str = "pending", limit: int = 100, _: Role = ANALYST_UP
+    ) -> list[dict[str, Any]]:
+        return await list_pending(deps, status, max(1, min(limit, 500)))
 
     @app.post("/v1/approvals/{approval_id}/decision")
     async def decide(

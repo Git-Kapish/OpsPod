@@ -13,7 +13,7 @@ from sqlalchemy import select
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from opspod.api.auth import require_role
-from opspod.api.ops import http_error, list_pending
+from opspod.api.ops import count_approvals, http_error, list_pending
 from opspod.console.stats import dashboard_stats
 from opspod.core.errors import LedgerError, PermissionDenied
 from opspod.db.models import Action, AuditLog, Case, CaseStep, DeadLetter, Decision
@@ -55,7 +55,11 @@ def register_console(app: FastAPI, deps: Deps) -> None:
 
     @app.get("/console/queue")
     async def queue(request: Request, _: Role = VIEW) -> Response:
-        ctx = {"rows": await list_pending(deps), "role": request.state.role.value}
+        ctx = {
+            "rows": await list_pending(deps, limit=50),
+            "total": await count_approvals(deps),
+            "role": request.state.role.value,
+        }
         return TEMPLATES.TemplateResponse(request, "queue.html", ctx)
 
     @app.post("/console/approvals/{approval_id}/decision")

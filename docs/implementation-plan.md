@@ -79,3 +79,11 @@ LLM proposes / policy disposes; no floats for money; fail-safe to human; ledger+
 - `git log --oneline` shows the two commits with no co-author trailer.
 - `git status` clean; `git ls-remote origin` shows `main` at local HEAD.
 - Confirm `.env`/keys are ignored by `.gitignore`.
+
+## Status (end of build)
+
+Phases 0-8 are built and tested; Phase 9 polish is done (README with measured results, demo GIF,
+diagrams). Not built, by choice: the second workflow (merchant menu issue) and the MCP server.
+The policy engine is money-specific, so a second workflow needs a real generalization of the
+policy layer, not a bolt-on; the tool registry already exposes `describe()` as the MCP seam.
+Real-model quality numbers need provider keys (`make probe`, `make eval-live`).

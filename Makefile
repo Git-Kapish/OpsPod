@@ -19,9 +19,9 @@ test:
 lint:
 	$(RUN) ruff check . && $(RUN) ruff format --check . && $(RUN) mypy opspod
 eval:
-	LLM_MODE=replay $(RUN) python scripts/run_eval.py
+	$(RUN) python scripts/run_eval.py
 eval-live:
-	LLM_MODE=live $(RUN) python scripts/run_eval.py --live
+	$(RUN) python scripts/run_eval.py --live
 probe:
 	$(RUN) python scripts/probe_providers.py
 chaos:

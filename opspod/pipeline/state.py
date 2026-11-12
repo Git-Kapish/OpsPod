@@ -28,6 +28,11 @@ class ContextSnapshot(BaseModel):
     refunds_30d: int
     fixtures: dict[str, Any]  # rider_name removed before persisting
 
+    @property
+    def paid_total(self) -> int:
+        """What the customer actually paid (can exceed the order total after double charges)."""
+        return sum(self.payments) if self.payments else self.total
+
 
 class CalcSnapshot(BaseModel):
     outcome: str

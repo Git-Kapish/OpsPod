@@ -101,7 +101,7 @@ async def decide_approval(
             if outcome in MONEY_OUTCOMES:
                 inp = CaseIn.model_validate(case.payload_json)
                 ctx = await deps.fetch_context({"external_id": inp.external_id})
-                if await net_paid(s, case_id=case.id) + amount > ctx.total:
+                if await net_paid(s, case_id=case.id) + amount > ctx.paid_total:
                     raise ApprovalError("amount exceeds what is still refundable")
                 policy = deps.policies[case.region]
                 tool = "issue_credit" if outcome is Outcome.CREDIT else "issue_refund"

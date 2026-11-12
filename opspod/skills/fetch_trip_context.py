@@ -55,6 +55,10 @@ class TripContext(BaseModel):
     payments: list[int] | None  # None = payment records missing (REQUEST_INFO territory)
     fixtures: dict[str, Any]
 
+    @property
+    def paid_total(self) -> int:
+        return sum(self.payments) if self.payments else self.total
+
 
 def make_skill(repo: ContextRepo) -> Skill:
     async def _fetch(inp: ContextInput) -> TripContext:

@@ -339,7 +339,7 @@ async def policy_step(state: CaseState, deps: Deps, session: AsyncSession) -> Ca
         case_id=str(state.case_id),
         region=state.region,
         case_type=state.case_type or CaseType.SUSPICIOUS,
-        refundable_remaining=max((ctx.total if ctx else 0) - paid, 0),
+        refundable_remaining=max((ctx.paid_total if ctx else 0) - paid, 0),
         day_spend=await day_spend(
             session,
             region=state.region,

@@ -38,7 +38,7 @@ def _calc(inp: RefundInput) -> RefundOutput:
         case CaseType.WRONG_FARE:
             return _result(total - f.get("expected_fare", total), total, "fare_over_quote")
         case CaseType.DUPLICATE_CHARGE:
-            return _result(inp.duplicate_amount, total, "duplicate_payment")
+            return _result(inp.duplicate_amount, inp.duplicate_amount, "duplicate_payment")
         case CaseType.MISSING_ITEM:
             missing = f.get("missing")
             price = sum(i["price"] for i in f.get("items", []) if i["name"] == missing)

@@ -18,4 +18,5 @@ jobs:
       - run: uv sync
       - run: make lint
       - run: make test
-      # Phase 7: add `make eval` (cassette replay) as the release gate.
+      - run: make eval  # release gate: replays cassettes if recorded, else the stub LLM
+      - run: make alerts-test

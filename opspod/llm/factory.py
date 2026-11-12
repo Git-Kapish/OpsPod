@@ -33,7 +33,7 @@ def build_gateway(
     if mode is LLMMode.FAKE:
         fake = fake or FakeProvider()
         providers = {"fake": fake}
-        if not config.tasks:  # no probe results needed for tests
+        if not any(config.tasks.values()):  # no probe results needed for tests
             config = config.model_copy(
                 update={"tasks": {t: [Candidate(provider="fake", model="fake-1")] for t in TASKS}}
             )

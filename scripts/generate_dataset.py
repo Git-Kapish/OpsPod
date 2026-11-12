@@ -10,6 +10,9 @@ import random
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from handwritten_cases import cases as handwritten_cases  # noqa: E402
+
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "evals" / "datasets"
 SEED = 42
@@ -141,7 +144,14 @@ def build_case(i: int, rng: random.Random) -> dict:
             "complaint_text": text,
         },
         "fixtures": fx,
-        "expected": {"outcome": outcome, "amount": amount, "route": route, "tools": TOOLS[route]},
+        "expected": {
+            "outcome": outcome,
+            "amount": amount,
+            "route": route,
+            "tools": []
+            if route == "auto" and outcome in ("DENY", "REQUEST_INFO")
+            else TOOLS[route],
+        },
     }
 
 
@@ -158,8 +168,20 @@ def write(cases: list[dict]) -> str:
         body = "\n".join(rows) + "\n"
         (OUT / f"{split}.jsonl").write_text(body, newline="\n")
         digest.update(body.encode())
+    hand = handwritten_cases()
+    body = "\n".join(json.dumps(c, sort_keys=True) for c in hand) + "\n"
+    (OUT / "handwritten.jsonl").write_text(body, newline="\n")
+    digest.update(body.encode())
     (OUT / "MANIFEST.json").write_text(
-        json.dumps({"seed": SEED, "count": len(cases), "sha256": digest.hexdigest()}, indent=2)
+        json.dumps(
+            {
+                "seed": SEED,
+                "generated": len(cases),
+                "handwritten": len(hand),
+                "sha256": digest.hexdigest(),
+            },
+            indent=2,
+        )
         + "\n",
         newline="\n",
     )

@@ -1,6 +1,6 @@
 {
  "meta": {
-  "at": "2026-11-12 09:58 UTC",
+  "at": "2026-11-12 11:00 UTC",
   "split": "dev",
   "llm": "stub",
   "stub": "good"
@@ -25,8 +25,8 @@
   "llm_calls_total": 12,
   "llm_calls_per_case": 0.0759493670886076,
   "tokens_per_case": 1.518987341772152,
-  "latency_p50_s": 0.09838700000545941,
-  "latency_p95_s": 2.7900590999925043,
+  "latency_p50_s": 0.1175529999891296,
+  "latency_p95_s": 0.15605480002705008,
   "auto_resolve_rate": 0.5506329113924051,
   "errors": 0,
   "by_tag": {

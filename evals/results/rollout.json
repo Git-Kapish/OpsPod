@@ -1,0 +1,54 @@
+[
+ {
+  "stage": "1. Shadow",
+  "mode": "SHADOW",
+  "cases": 213,
+  "agreement_with_human_label": 1.0,
+  "would_route_auto": 0.5258215962441315,
+  "would_route_approval": 0.17370892018779344,
+  "would_route_escalate": 0.3004694835680751,
+  "cases_where_money_moved": 0,
+  "money_moved_minor_units": 0,
+  "unauthorized_actions": 0,
+  "crashes": 0
+ },
+ {
+  "stage": "2. Assisted",
+  "mode": "ASSISTED",
+  "cases": 213,
+  "agreement_with_human_label": 0.47417840375586856,
+  "would_route_auto": 0.0,
+  "would_route_approval": 0.6995305164319249,
+  "would_route_escalate": 0.3004694835680751,
+  "cases_where_money_moved": 0,
+  "money_moved_minor_units": 0,
+  "unauthorized_actions": 0,
+  "crashes": 0
+ },
+ {
+  "stage": "3. Canary 25%",
+  "mode": "AUTO_LOW_RISK",
+  "cases": 213,
+  "agreement_with_human_label": 0.596244131455399,
+  "would_route_auto": 0.12206572769953052,
+  "would_route_approval": 0.5774647887323944,
+  "would_route_escalate": 0.3004694835680751,
+  "cases_where_money_moved": 22,
+  "money_moved_minor_units": 576243,
+  "unauthorized_actions": 0,
+  "crashes": 0
+ },
+ {
+  "stage": "4. Auto low-risk",
+  "mode": "AUTO_LOW_RISK",
+  "cases": 213,
+  "agreement_with_human_label": 1.0,
+  "would_route_auto": 0.5258215962441315,
+  "would_route_approval": 0.17370892018779344,
+  "would_route_escalate": 0.3004694835680751,
+  "cases_where_money_moved": 87,
+  "money_moved_minor_units": 1925668,
+  "unauthorized_actions": 0,
+  "crashes": 0
+ }
+]

@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: opspod
+    folder: OpsPod
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

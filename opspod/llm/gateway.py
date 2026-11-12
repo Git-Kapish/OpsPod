@@ -33,6 +33,7 @@ from opspod.llm.resilience import (
     TokenBucket,
 )
 from opspod.llm.types import LLMResult, Provider, T
+from opspod.observability.tracing import span
 
 
 @dataclass(frozen=True)
@@ -95,6 +96,7 @@ class Gateway:
         schema: type[T],
         temperature: float = 0.0,
         max_retries: int = 2,
+        prompt_id: str | None = None,
     ) -> LLMResult[T]:
         chain = self._cfg.tasks.get(task) or []
         if not chain:
@@ -107,17 +109,33 @@ class Gateway:
         failures: list[str] = []
         invalid: LLMInvalidOutput | None = None
         for idx, cand in enumerate(chain):
-            try:
-                res = await self._try(
-                    task, cand, system_full, user, schema, schema_json, temperature, max_retries
-                )
-            except LLMInvalidOutput as exc:
-                invalid = exc
-                failures.append(f"{cand.model}: invalid output")
-            except LLMError as exc:  # LLMUnavailable, timeouts and rate limits exhausted
-                failures.append(f"{cand.model}: {exc}")
-            else:
-                return replace(res, fallback_used=idx > 0)
+            with span(
+                "llm.call",
+                task=task,
+                provider=cand.provider,
+                model=cand.model,
+                prompt_version=prompt_id,
+                fallback_index=idx,
+            ) as sp:
+                try:
+                    res = await self._try(
+                        task, cand, system_full, user, schema, schema_json, temperature, max_retries
+                    )
+                except LLMInvalidOutput as exc:
+                    invalid = exc
+                    sp.set_attribute("validation", "invalid")
+                    failures.append(f"{cand.model}: invalid output")
+                except LLMError as exc:  # LLMUnavailable, timeouts and rate limits exhausted
+                    sp.set_attribute("error", type(exc).__name__)
+                    failures.append(f"{cand.model}: {exc}")
+                else:
+                    sp.set_attribute("validation", "ok")
+                    sp.set_attribute("tokens_in", res.tokens_in)
+                    sp.set_attribute("tokens_out", res.tokens_out)
+                    sp.set_attribute("retry_count", res.attempts - 1)
+                    sp.set_attribute("repaired", res.repaired)
+                    sp.set_attribute("cached", res.cached)
+                    return replace(res, fallback_used=idx > 0)
         if invalid is not None and len(failures) == 1:
             raise invalid
         raise LLMUnavailable("all providers failed: " + "; ".join(failures))

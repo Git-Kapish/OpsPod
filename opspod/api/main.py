@@ -10,10 +10,12 @@ from fastapi import FastAPI
 from opspod.api.app import create_app
 from opspod.core.config import get_settings
 from opspod.core.logging import configure_logging
+from opspod.observability.tracing import configure_exporter
 from opspod.pipeline.bootstrap import build_deps
 
 settings = get_settings()
 configure_logging()
+configure_exporter(settings.otel_exporter_otlp_endpoint)
 _pool = None
 
 

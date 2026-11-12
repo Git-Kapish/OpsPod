@@ -21,11 +21,15 @@ def require_role(*allowed: Role) -> Callable[..., Role]:
         request: Request,
         x_api_key: str | None = Header(default=None),
         x_role: str | None = Header(default=None),
+        authorization: str | None = Header(default=None),  # Bearer <key>, for Alertmanager
         opspod_key: str | None = Cookie(default=None),  # console login (SameSite=Strict)
         opspod_role: str | None = Cookie(default=None),
     ) -> Role:
         keys: dict[str, set[Role]] = request.app.state.api_keys
-        x_api_key, x_role = x_api_key or opspod_key, x_role or opspod_role
+        bearer = (
+            authorization[7:] if authorization and authorization.startswith("Bearer ") else None
+        )
+        x_api_key, x_role = x_api_key or bearer or opspod_key, x_role or opspod_role
         roles = keys.get(x_api_key or "")
         if roles is None:
             raise HTTPException(401, "invalid api key")

@@ -6,6 +6,7 @@ step can never pay twice. Failures are recorded and re-raised; the worker retrie
 dead-letters.
 """
 
+import time
 import uuid
 from collections.abc import Awaitable, Callable
 
@@ -16,6 +17,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from opspod.core.errors import OpsPodError
 from opspod.db.audit import write_audit
 from opspod.db.models import Case, CaseStep
+from opspod.observability.metrics import CASE_SECONDS, CASES, PIPELINE_ERRORS, STEP_SECONDS
+from opspod.observability.tracing import case_context, span
 from opspod.pipeline import steps
 from opspod.pipeline.deps import Deps
 from opspod.pipeline.state import CaseIn, CaseState
@@ -92,12 +95,32 @@ async def _record_failure(deps: Deps, case_id: uuid.UUID, step: str, exc: Except
 
 
 async def run_case(deps: Deps, case_id: uuid.UUID) -> CaseState:
-    async with deps.sessionmaker() as s:
-        state = await _load_state(s, case_id)
-    for name, fn in STEPS:
-        if name in state.completed:
-            continue
-        try:
+    """Run (or resume) a case. trace_id == case_id; every step is a span and a metric."""
+    started = time.perf_counter()
+    structlog.contextvars.bind_contextvars(case_id=str(case_id), trace_id=case_id.hex)
+    try:
+        with span("case.process", context=case_context(case_id), case_id=str(case_id)) as root:
+            async with deps.sessionmaker() as s:
+                state = await _load_state(s, case_id)
+            for name, fn in STEPS:
+                if name in state.completed:
+                    continue
+                state = await _run_step(deps, case_id, name, fn, state)
+            root.set_attribute("status", state.final_status)
+            route = state.decision.route.value if state.decision else "none"
+            CASES.labels(state.final_status, route, state.path).inc()
+            CASE_SECONDS.observe(time.perf_counter() - started)
+            return state
+    finally:
+        structlog.contextvars.unbind_contextvars("case_id", "trace_id")
+
+
+async def _run_step(
+    deps: Deps, case_id: uuid.UUID, name: str, fn: StepFn, state: CaseState
+) -> CaseState:
+    t0 = time.perf_counter()
+    try:
+        with span(f"step.{name}", step=name):
             if deps.before_step is not None:
                 deps.before_step(name)
             async with deps.sessionmaker() as s, s.begin():
@@ -113,9 +136,10 @@ async def run_case(deps: Deps, case_id: uuid.UUID) -> CaseState:
                         finished_at=func.now(),
                     )
                 )
-        except Exception as exc:  # noqa: BLE001 - any failure must be recorded, then retried/DLQ'd
-            log.error("step_failed", case_id=str(case_id), step=name, error=type(exc).__name__)
-            await _record_failure(deps, case_id, name, exc)
-            raise
-        state = new
-    return state
+    except Exception as exc:  # noqa: BLE001 - any failure must be recorded, then retried/DLQ'd
+        log.error("step_failed", step=name, error=type(exc).__name__)
+        PIPELINE_ERRORS.labels(name).inc()
+        await _record_failure(deps, case_id, name, exc)
+        raise
+    STEP_SECONDS.labels(name).observe(time.perf_counter() - t0)
+    return new

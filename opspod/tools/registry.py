@@ -18,6 +18,8 @@ from opspod.core.errors import ConfigError, OpsPodError, PermissionDenied
 from opspod.domain.enums import LedgerKind, Role
 from opspod.domain.money import Money
 from opspod.ledger import service as ledger
+from opspod.observability.metrics import IDEMPOTENT_REPLAYS, POLICY_BLOCKED
+from opspod.observability.tracing import span
 from opspod.policy.models import RegionPolicy
 
 
@@ -120,28 +122,33 @@ class ToolRegistry:
     async def call(
         self, name: str, principal: Principal, raw_args: dict[str, Any], ctx: ToolContext
     ) -> Any:
-        spec = self._tools.get(name)
-        if spec is None:
-            raise UnknownTool(name)
-        if spec.scope not in principal.scopes:
-            raise PermissionDenied(f"{principal.name} lacks scope {spec.scope} for {name}")
-        try:
-            args = spec.args_model.model_validate(raw_args)
-        except ValidationError as exc:
-            raise InvalidToolArgs(f"{name}: {exc.error_count()} invalid args") from exc
-        if spec.money:
-            await self._check_caps(args, principal, ctx)
-        return await spec.handler(args, ctx)
+        with span(f"tool.{name}", principal=principal.name, region=ctx.region) as sp:
+            spec = self._tools.get(name)
+            if spec is None:
+                raise UnknownTool(name)
+            sp.set_attribute("tool.scope", spec.scope)
+            if spec.scope not in principal.scopes:
+                POLICY_BLOCKED.labels("T001_missing_scope").inc()
+                raise PermissionDenied(f"{principal.name} lacks scope {spec.scope} for {name}")
+            try:
+                args = spec.args_model.model_validate(raw_args)
+            except ValidationError as exc:
+                raise InvalidToolArgs(f"{name}: {exc.error_count()} invalid args") from exc
+            if spec.money:
+                await self._check_caps(args, principal, ctx)
+            return await spec.handler(args, ctx)
 
     @staticmethod
     async def _check_caps(args: Any, principal: Principal, ctx: ToolContext) -> None:
         if args.amount > principal.per_case_cap:
+            POLICY_BLOCKED.labels("T002_per_case_cap").inc()
             raise PermissionDenied(
                 f"{principal.name}: {args.amount} exceeds per-case cap {principal.per_case_cap}"
             )
         start = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
         spent = await ledger.day_spend(ctx.session, region=ctx.region, since=start)
         if spent + args.amount > principal.per_day_cap:
+            POLICY_BLOCKED.labels("T003_per_day_cap").inc()
             raise PermissionDenied(
                 f"{principal.name}: per-day cap {principal.per_day_cap} exceeded"
             )
@@ -157,6 +164,8 @@ def _payout(kind: LedgerKind) -> Handler:
             account=args.account,
             amount=Money(args.amount, args.currency),
         )
+        if res.replayed:
+            IDEMPOTENT_REPLAYS.inc()
         return {"action_id": str(res.action_id), "replayed": res.replayed}
 
     return handler

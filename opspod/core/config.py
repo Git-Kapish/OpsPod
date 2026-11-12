@@ -24,10 +24,11 @@ class Settings(BaseSettings):
     llm_daily_call_budget: int = 900
     otel_exporter_otlp_endpoint: str = "http://localhost:4317"
     app_env: str = "dev"
+    worker_metrics_port: int = 9101
     # "key=role1|role2;key2=role": API key -> roles it may assume (X-Role header selects one)
     api_keys: str = (
         "dev-analyst=analyst;dev-approver=analyst|approver;"
-        "dev-admin=analyst|approver|admin;dev-agent=agent-service"
+        "dev-admin=analyst|approver|admin;dev-agent=agent-service;dev-alerts=admin"
     )
 
 

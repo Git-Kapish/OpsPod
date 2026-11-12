@@ -1,6 +1,6 @@
 RUN = uv run
 
-.PHONY: up down migrate seed dev worker test lint eval eval-live probe chaos
+.PHONY: alerts-test dashboards up down migrate seed dev worker test lint eval eval-live probe chaos
 
 up:
 	docker compose up -d
@@ -26,3 +26,9 @@ probe:
 	$(RUN) python scripts/probe_providers.py
 chaos:
 	LLM_MODE=fake $(RUN) pytest tests/chaos
+
+alerts-test:
+	MSYS_NO_PATHCONV=1 docker run --rm --entrypoint promtool -v "$(CURDIR)/infra:/infra" prom/prometheus:v2.53.0 check rules /infra/alerts.yml
+	MSYS_NO_PATHCONV=1 docker run --rm --entrypoint promtool -v "$(CURDIR)/infra:/infra" prom/prometheus:v2.53.0 test rules /infra/alerts_test.yml
+dashboards:
+	$(RUN) python scripts/make_dashboard.py

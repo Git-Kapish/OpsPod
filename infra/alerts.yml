@@ -1,0 +1,97 @@
+groups:
+  - name: opspod
+    rules:
+      - alert: LLMErrorRateHigh
+        expr: >
+          sum(rate(opspod_llm_calls_total{outcome!~"ok|cache_hit"}[5m]))
+          / sum(rate(opspod_llm_calls_total{outcome!="cache_hit"}[5m])) > 0.3
+        for: 2m
+        labels: {severity: page}
+        annotations:
+          summary: "LLM failure rate above 30%"
+          runbook: "docs/runbook.md#llm-error-rate"
+
+      - alert: LLMRateLimitStorm
+        expr: sum(rate(opspod_llm_calls_total{outcome="rate_limited"}[5m])) > 0.2
+        for: 2m
+        labels: {severity: page}
+        annotations:
+          summary: "Provider 429 storm"
+          runbook: "docs/runbook.md#llm-rate-limit-storm"
+
+      - alert: LLMFallbackRateHigh
+        expr: >
+          sum(rate(opspod_llm_fallback_total[10m]))
+          / sum(rate(opspod_llm_calls_total{outcome="ok"}[10m])) > 0.5
+        for: 5m
+        labels: {severity: ticket}
+        annotations:
+          summary: "More than half of LLM results come from fallback models"
+          runbook: "docs/runbook.md#llm-fallback-rate"
+
+      - alert: LLMBudgetNearLimit
+        expr: opspod_llm_budget_near_limit == 1
+        labels: {severity: ticket}
+        annotations:
+          summary: "A provider daily budget is at least 90% used"
+          runbook: "docs/runbook.md#llm-budget"
+
+      - alert: EscalationRateAnomaly
+        expr: >
+          sum(rate(opspod_cases_total{route="ESCALATE"}[15m]))
+          / sum(rate(opspod_cases_total[15m])) > 0.6
+          and sum(rate(opspod_cases_total[15m])) > 0.01
+        for: 10m
+        labels: {severity: ticket}
+        annotations:
+          summary: "Escalation rate above 60%"
+          runbook: "docs/runbook.md#escalation-anomaly"
+
+      - alert: ApprovalQueueBacklog
+        expr: opspod_approval_queue_depth > 50
+        for: 10m
+        labels: {severity: ticket}
+        annotations:
+          summary: "Approval queue backlog above 50"
+          runbook: "docs/runbook.md#approval-backlog"
+
+      - alert: PolicyViolationBlocked
+        expr: increase(opspod_policy_violation_blocked_total[5m]) > 0
+        labels: {severity: page}
+        annotations:
+          summary: "A proposal or action was blocked by policy"
+          runbook: "docs/runbook.md#policy-violation-blocked"
+
+      - alert: DuplicateExecutionSpike
+        expr: increase(opspod_idempotent_replays_total[5m]) > 10
+        labels: {severity: ticket}
+        annotations:
+          summary: "Many duplicate money actions absorbed by idempotency keys"
+          runbook: "docs/runbook.md#duplicate-execution"
+
+      - alert: CaseLatencySLOBurn
+        expr: >
+          histogram_quantile(0.95, sum(rate(opspod_case_duration_seconds_bucket[10m])) by (le)) > 30
+        for: 5m
+        labels: {severity: page}
+        annotations:
+          summary: "p95 case latency above the 30s SLO"
+          runbook: "docs/runbook.md#latency-slo"
+
+      - alert: PipelineErrorBudgetBurn
+        expr: >
+          sum(rate(opspod_pipeline_errors_total[5m]))
+          / (sum(rate(opspod_cases_total[5m])) + sum(rate(opspod_pipeline_errors_total[5m]))) > 0.005
+        for: 5m
+        labels: {severity: page}
+        annotations:
+          summary: "Pipeline error ratio above the 99.5% success SLO"
+          runbook: "docs/runbook.md#pipeline-errors"
+
+      - alert: DeadLetterNotEmpty
+        expr: opspod_dlq_depth > 0
+        for: 1m
+        labels: {severity: ticket}
+        annotations:
+          summary: "Dead letter queue has unresolved cases"
+          runbook: "docs/runbook.md#dead-letters"

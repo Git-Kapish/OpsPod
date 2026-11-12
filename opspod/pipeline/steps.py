@@ -19,6 +19,7 @@ from opspod.db.flags import get_autonomy, kill_switch_on
 from opspod.db.models import Approval, Case, Decision
 from opspod.domain.enums import MONEY_OUTCOMES, AutonomyMode, CaseType, Outcome, Route
 from opspod.ledger.service import day_spend, net_paid, payout_count
+from opspod.observability.metrics import LLM_FALLBACKS, LLM_REPAIRS, POLICY_BLOCKED
 from opspod.pipeline.deps import Deps
 from opspod.pipeline.schemas import AnalysisOutput, ClassifyOutput, ToneOutput
 from opspod.pipeline.state import CalcSnapshot, CaseIn, CaseState, ContextSnapshot, LLMMeta
@@ -211,6 +212,10 @@ async def triage(state: CaseState, deps: Deps, session: AsyncSession) -> CaseSta
 
 
 def _meta(task: str, prompt: Prompt, res: Any) -> LLMMeta:
+    if res.repaired:
+        LLM_REPAIRS.inc()
+    if res.fallback_used:
+        LLM_FALLBACKS.inc()
     return LLMMeta(
         task=task,
         prompt_id=prompt.id,
@@ -245,6 +250,7 @@ async def llm_analysis(state: CaseState, deps: Deps, session: AsyncSession) -> C
             cprompt = load_prompt("classify")
             cres = await deps.gateway.generate_structured(
                 task="classify",
+                prompt_id=cprompt.id,
                 system=cprompt.text,
                 user=wrap_untrusted(state.redacted_text),
                 schema=ClassifyOutput,
@@ -268,7 +274,11 @@ async def llm_analysis(state: CaseState, deps: Deps, session: AsyncSession) -> C
             f"Complaint:\n{wrap_untrusted(state.redacted_text)}"
         )
         res = await deps.gateway.generate_structured(
-            task="analyze", system=prompt.text, user=user, schema=AnalysisOutput
+            task="analyze",
+            prompt_id=prompt.id,
+            system=prompt.text,
+            user=user,
+            schema=AnalysisOutput,
         )
     except LLMError as exc:
         state.path = "llm_unavailable"
@@ -347,6 +357,8 @@ async def policy_step(state: CaseState, deps: Deps, session: AsyncSession) -> Ca
     )
     state.facts, state.policy_version = facts, policy.version
     state.decision = evaluate(policy, state.proposal, facts)
+    for rule in state.decision.violations:
+        POLICY_BLOCKED.labels(rule.split("_")[0]).inc()
     await write_audit(
         session,
         case_id=state.case_id,
@@ -405,6 +417,7 @@ async def execute(state: CaseState, deps: Deps, session: AsyncSession) -> CaseSt
                     tool, agent_principal(policy), args, ToolContext(session, state.region)
                 )
             except OpsPodError as exc:  # tool layer refused: fail safe to a human
+                POLICY_BLOCKED.labels("X001").inc()
                 state.decision = d.model_copy(
                     update={
                         "route": Route.ESCALATE,
@@ -481,6 +494,7 @@ async def notify(state: CaseState, deps: Deps, session: AsyncSession) -> CaseSta
             prompt = load_prompt("draft_message")
             res = await deps.gateway.generate_structured(
                 task="draft_message",
+                prompt_id=prompt.id,
                 system=prompt.text,
                 user=f"Outcome type: {d.outcome.value}",
                 schema=ToneOutput,

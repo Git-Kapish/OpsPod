@@ -5,12 +5,15 @@ from typing import Any
 
 from arq import Retry
 from arq.connections import RedisSettings
+from prometheus_client import start_http_server
 from sqlalchemy import select
 
 from opspod.core.config import get_settings
 from opspod.core.logging import configure_logging
 from opspod.db.audit import write_audit
 from opspod.db.models import Case, DeadLetter
+from opspod.observability.metrics import DLQ_TOTAL
+from opspod.observability.tracing import configure_exporter
 from opspod.pipeline.bootstrap import build_deps
 from opspod.pipeline.deps import Deps
 from opspod.pipeline.runner import run_case
@@ -21,6 +24,7 @@ INCOMPLETE = ("received", "processing")
 
 async def dead_letter(deps: Deps, case_id: uuid.UUID, error: str, attempts: int) -> None:
     """S10: an unrecoverable failure never auto-executes; it lands in the DLQ for a human."""
+    DLQ_TOTAL.inc()
     async with deps.sessionmaker() as s, s.begin():
         s.add(DeadLetter(case_id=case_id, step="pipeline", error=error[:300], attempts=attempts))
         case = await s.get(Case, case_id)
@@ -60,7 +64,10 @@ async def requeue_incomplete(ctx: dict[str, Any]) -> int:
 
 async def startup(ctx: dict[str, Any]) -> None:
     configure_logging()
-    ctx["deps"] = build_deps(get_settings())
+    settings = get_settings()
+    configure_exporter(settings.otel_exporter_otlp_endpoint)
+    start_http_server(settings.worker_metrics_port)
+    ctx["deps"] = build_deps(settings)
     await requeue_incomplete(ctx)
 
 

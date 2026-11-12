@@ -16,6 +16,7 @@ from opspod.db.audit import write_audit
 from opspod.db.models import Action, Approval, Case, Decision
 from opspod.domain.enums import MONEY_OUTCOMES, Outcome
 from opspod.ledger.service import net_paid
+from opspod.observability.metrics import APPROVAL_WAIT, REVERSALS
 from opspod.pipeline.deps import Deps
 from opspod.pipeline.state import CaseIn
 from opspod.skills.redact_pii import rehydrate
@@ -84,6 +85,7 @@ async def decide_approval(
         case = await s.get(Case, appr.case_id)
         assert dec is not None and case is not None
         appr.decided_by, appr.decided_at, appr.note = actor, datetime.now(UTC), note
+        APPROVAL_WAIT.observe((appr.decided_at - appr.requested_at).total_seconds())
         action_id: str | None = None
 
         if decision == "reject":
@@ -153,6 +155,7 @@ async def reverse_executed_action(
         )
         if not res["replayed"]:
             case.status = "reversed"
+            REVERSALS.inc()
             await write_audit(
                 s,
                 case_id=case.id,

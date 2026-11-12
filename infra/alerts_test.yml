@@ -1,0 +1,117 @@
+rule_files:
+  - alerts.yml
+evaluation_interval: 1m
+
+tests:
+  - name: llm errors above 30% page after 2 minutes
+    interval: 1m
+    input_series:
+      - series: 'opspod_llm_calls_total{provider="p",model="m",outcome="ok"}'
+        values: "0+1x20"
+      - series: 'opspod_llm_calls_total{provider="p",model="m",outcome="timeout"}'
+        values: "0+3x20"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: LLMErrorRateHigh
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: LLMErrorRateHigh
+        exp_alerts:
+          - exp_labels: {severity: page}
+            exp_annotations:
+              summary: "LLM failure rate above 30%"
+              runbook: "docs/runbook.md#llm-error-rate"
+
+  - name: healthy llm traffic does not alert
+    interval: 1m
+    input_series:
+      - series: 'opspod_llm_calls_total{provider="p",model="m",outcome="ok"}'
+        values: "0+5x20"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: LLMErrorRateHigh
+        exp_alerts: []
+
+  - name: 429 storm
+    interval: 1m
+    input_series:
+      - series: 'opspod_llm_calls_total{provider="p",model="m",outcome="rate_limited"}'
+        values: "0+30x20"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: LLMRateLimitStorm
+        exp_alerts:
+          - exp_labels: {severity: page}
+            exp_annotations:
+              summary: "Provider 429 storm"
+              runbook: "docs/runbook.md#llm-rate-limit-storm"
+
+  - name: any policy block pages immediately
+    interval: 1m
+    input_series:
+      - series: 'opspod_policy_violation_blocked_total{rule="P003"}'
+        values: "0 0 0 1 1 1 1"
+    alert_rule_test:
+      - eval_time: 4m
+        alertname: PolicyViolationBlocked
+        exp_alerts:
+          - exp_labels: {severity: page, rule: P003}
+            exp_annotations:
+              summary: "A proposal or action was blocked by policy"
+              runbook: "docs/runbook.md#policy-violation-blocked"
+      - eval_time: 20m
+        alertname: PolicyViolationBlocked
+        exp_alerts: []
+
+  - name: dead letters and queue backlog
+    interval: 1m
+    input_series:
+      - series: "opspod_dlq_depth"
+        values: "0 0 1 1 1 1 1 1"
+      - series: "opspod_approval_queue_depth"
+        values: "60x20"
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: DeadLetterNotEmpty
+        exp_alerts:
+          - exp_labels: {severity: ticket}
+            exp_annotations:
+              summary: "Dead letter queue has unresolved cases"
+              runbook: "docs/runbook.md#dead-letters"
+      - eval_time: 15m
+        alertname: ApprovalQueueBacklog
+        exp_alerts:
+          - exp_labels: {severity: ticket}
+            exp_annotations:
+              summary: "Approval queue backlog above 50"
+              runbook: "docs/runbook.md#approval-backlog"
+
+  - name: duplicate execution spike
+    interval: 1m
+    input_series:
+      - series: "opspod_idempotent_replays_total"
+        values: "0+5x20"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: DuplicateExecutionSpike
+        exp_alerts:
+          - exp_labels: {severity: ticket}
+            exp_annotations:
+              summary: "Many duplicate money actions absorbed by idempotency keys"
+              runbook: "docs/runbook.md#duplicate-execution"
+
+  - name: escalation anomaly needs volume
+    interval: 1m
+    input_series:
+      - series: 'opspod_cases_total{status="escalated",route="ESCALATE",path="rule_escalate"}'
+        values: "0+9x30"
+      - series: 'opspod_cases_total{status="resolved",route="AUTO_EXECUTE",path="rule"}'
+        values: "0+1x30"
+    alert_rule_test:
+      - eval_time: 25m
+        alertname: EscalationRateAnomaly
+        exp_alerts:
+          - exp_labels: {severity: ticket}
+            exp_annotations:
+              summary: "Escalation rate above 60%"
+              runbook: "docs/runbook.md#escalation-anomaly"

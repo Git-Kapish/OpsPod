@@ -3,6 +3,15 @@ on: [push, pull_request]
 jobs:
   test:
     runs-on: ubuntu-latest
+    env:
+      CI: "true"
+      DATABASE_URL: postgresql+asyncpg://opspod:opspod@localhost:5432/opspod
+    services:
+      postgres:
+        image: postgres:16
+        env: {POSTGRES_USER: opspod, POSTGRES_PASSWORD: opspod, POSTGRES_DB: opspod}
+        ports: ["5432:5432"]
+        options: --health-cmd pg_isready --health-interval 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5

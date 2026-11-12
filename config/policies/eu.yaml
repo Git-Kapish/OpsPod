@@ -1,0 +1,10 @@
+region: eu
+version: 1
+currency: EUR
+sla_hours: 48
+language: en-GB
+allowed_outcomes: [FULL_REFUND, PARTIAL_REFUND, CREDIT, DENY, REQUEST_INFO, ESCALATE]
+# EU: denying a consumer claim always needs a human.
+auto_outcomes: [FULL_REFUND, PARTIAL_REFUND, CREDIT, REQUEST_INFO]
+limits: {auto_limit: 2000, per_case_cap: 8000, per_day_cap: 4000000, customer_refunds_30d: 2}
+thresholds: {fraud_escalate_score: 50, min_confidence: 0.75}

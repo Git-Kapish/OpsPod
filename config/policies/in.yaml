@@ -1,0 +1,10 @@
+region: in
+version: 1
+currency: INR
+sla_hours: 24
+language: en-IN
+# IN: no auto-CREDIT; credits need approval.
+allowed_outcomes: [FULL_REFUND, PARTIAL_REFUND, CREDIT, DENY, REQUEST_INFO, ESCALATE]
+auto_outcomes: [FULL_REFUND, PARTIAL_REFUND, DENY, REQUEST_INFO]
+limits: {auto_limit: 200000, per_case_cap: 800000, per_day_cap: 400000000, customer_refunds_30d: 4}
+thresholds: {fraud_escalate_score: 60, min_confidence: 0.7}

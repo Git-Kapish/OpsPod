@@ -14,4 +14,4 @@ make lint test
 ```
 
 ## Status
-Phase 0 (foundations) done. Results and eval numbers will be added as they are measured.
+Phases 0-1 done (foundations; domain, ledger, policy engine). Results and eval numbers will be added as they are measured.

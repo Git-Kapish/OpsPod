@@ -15,7 +15,7 @@ dev:
 worker:
 	$(RUN) arq opspod.pipeline.worker.WorkerSettings
 test:
-	LLM_MODE=fake $(RUN) pytest -m "not integration"
+	LLM_MODE=fake $(RUN) pytest
 lint:
 	$(RUN) ruff check . && $(RUN) ruff format --check . && $(RUN) mypy opspod
 eval:

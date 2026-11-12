@@ -1,0 +1,9 @@
+region: us
+version: 1
+currency: USD
+sla_hours: 24
+language: en-US
+allowed_outcomes: [FULL_REFUND, PARTIAL_REFUND, CREDIT, DENY, REQUEST_INFO, ESCALATE]
+auto_outcomes: [FULL_REFUND, PARTIAL_REFUND, CREDIT, DENY, REQUEST_INFO]
+limits: {auto_limit: 2500, per_case_cap: 10000, per_day_cap: 5000000, customer_refunds_30d: 3}
+thresholds: {fraud_escalate_score: 60, min_confidence: 0.7}

@@ -1,0 +1,9 @@
+# Local drill config (LLM_MODE=fake, LLM_CONFIG=config/llm.demo.yaml): two providers so a
+# primary outage exercises the fallback path. Model names here are fake stand-ins.
+tasks:
+  classify: [{provider: primary, model: fast-1}, {provider: secondary, model: fast-2}]
+  analyze: [{provider: primary, model: strong-1}, {provider: secondary, model: strong-2}]
+  draft_message: [{provider: primary, model: fast-1}, {provider: secondary, model: fast-2}]
+limits:
+  primary: {requests_per_minute: 60, daily_calls: 5000}
+  secondary: {requests_per_minute: 30, daily_calls: 5000}

@@ -28,7 +28,8 @@ class LLMConfig(BaseModel):
     breaker_threshold: int = 5
     breaker_reset_s: float = 30.0
     backoff_base_s: float = 0.5
-    max_wait_s: float = 30.0
+    max_wait_s: float = 30.0  # cap on Retry-After / backoff sleeps
+    queue_wait_s: float = 5.0  # shed load instead of waiting longer than this for a rate slot
 
 
 def load_llm_config(path: Path = LLM_CONFIG_PATH) -> LLMConfig:

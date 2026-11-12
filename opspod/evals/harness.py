@@ -124,14 +124,18 @@ async def _actual_tools(deps: Deps, case_id: uuid.UUID) -> list[str]:
 
 
 async def run_eval(
-    cases: list[dict[str, Any]], llm: str = "stub", stub: str = "good"
+    cases: list[dict[str, Any]],
+    llm: str = "stub",
+    stub: str = "good",
+    mode: AutonomyMode = AutonomyMode.AUTO_LOW_RISK,
+    canary: int = 100,
 ) -> tuple[list[CaseResult], list[dict[str, Any]]]:
     url = await prepare_db()
     await asyncio.to_thread(migrate, url)  # alembic env uses asyncio.run
     events: list[dict[str, Any]] = []
     deps = build_eval_deps(url, llm, stub, events)
     async with deps.sessionmaker() as s, s.begin():
-        flag = Autonomy(default=AutonomyMode.AUTO_LOW_RISK, canary_percent=100)
+        flag = Autonomy(default=mode, canary_percent=canary)
         await set_flag(s, "autonomy", flag.model_dump(mode="json"), "eval")
     run_id = uuid.uuid4().hex[:6]
     known_tools = {t["name"] for t in deps.tools.describe()} | PSEUDO_TOOLS

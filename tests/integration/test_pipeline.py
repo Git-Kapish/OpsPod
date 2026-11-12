@@ -16,7 +16,7 @@ from opspod.db.models import (
     LedgerEntry,
 )
 from opspod.domain.enums import AutonomyMode
-from opspod.llm.config import Candidate, LLMConfig
+from opspod.llm.config import Candidate, LLMConfig, ProviderLimits
 from opspod.llm.gateway import Gateway
 from opspod.llm.providers.fake import FakeProvider
 from opspod.pipeline.deps import Deps
@@ -60,6 +60,7 @@ def make_deps(sm, script=None) -> tuple[Deps, FakeProvider]:
             for t in ("classify", "analyze", "draft_message")
         },
         breaker_threshold=100,
+        limits={"fake": ProviderLimits(requests_per_minute=6000)},  # tests are not rate limited
     )
     deps = Deps(
         sessionmaker=sm,

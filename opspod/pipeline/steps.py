@@ -19,7 +19,12 @@ from opspod.db.flags import get_autonomy, kill_switch_on
 from opspod.db.models import Approval, Case, Decision
 from opspod.domain.enums import MONEY_OUTCOMES, AutonomyMode, CaseType, Outcome, Route
 from opspod.ledger.service import day_spend, net_paid, payout_count
-from opspod.observability.metrics import LLM_FALLBACKS, LLM_REPAIRS, POLICY_BLOCKED
+from opspod.observability.metrics import (
+    CASE_E2E_SECONDS,
+    LLM_FALLBACKS,
+    LLM_REPAIRS,
+    POLICY_BLOCKED,
+)
 from opspod.pipeline.deps import Deps
 from opspod.pipeline.schemas import AnalysisOutput, ClassifyOutput, ToneOutput
 from opspod.pipeline.state import CalcSnapshot, CaseIn, CaseState, ContextSnapshot, LLMMeta
@@ -537,6 +542,7 @@ async def finalize(state: CaseState, deps: Deps, session: AsyncSession) -> CaseS
     state = state.model_copy(deep=True)
     case, _ = await _load_case(session, state)
     case.status = state.final_status or "escalated"
+    CASE_E2E_SECONDS.observe((datetime.now(UTC) - case.created_at).total_seconds())
     await write_audit(
         session,
         case_id=state.case_id,

@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     otel_exporter_otlp_endpoint: str = "http://localhost:4317"
     app_env: str = "dev"
     worker_metrics_port: int = 9101
+    llm_config: str = ""  # path override for config/llm.yaml (e.g. config/llm.demo.yaml)
     # "key=role1|role2;key2=role": API key -> roles it may assume (X-Role header selects one)
     api_keys: str = (
         "dev-analyst=analyst;dev-approver=analyst|approver;"

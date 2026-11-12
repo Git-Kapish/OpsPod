@@ -140,7 +140,7 @@
   {
    "id": 5,
    "type": "timeseries",
-   "title": "Case latency p50/p95 (s)",
+   "title": "Case latency p95 (s): end-to-end vs processing",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -160,8 +160,8 @@
    "targets": [
     {
      "refId": "A",
-     "expr": "histogram_quantile(0.5, sum(rate(opspod_case_duration_seconds_bucket[5m])) by (le))",
-     "legendFormat": "p50",
+     "expr": "histogram_quantile(0.95, sum(rate(opspod_case_e2e_seconds_bucket[5m])) by (le))",
+     "legendFormat": "end-to-end (SLO)",
      "datasource": {
       "type": "prometheus",
       "uid": "prometheus"
@@ -170,7 +170,7 @@
     {
      "refId": "B",
      "expr": "histogram_quantile(0.95, sum(rate(opspod_case_duration_seconds_bucket[5m])) by (le))",
-     "legendFormat": "p95",
+     "legendFormat": "processing only",
      "datasource": {
       "type": "prometheus",
       "uid": "prometheus"
@@ -181,7 +181,7 @@
   {
    "id": 6,
    "type": "timeseries",
-   "title": "Step latency p95 (s)",
+   "title": "Queue depth and oldest job age",
    "datasource": {
     "type": "prometheus",
     "uid": "prometheus"
@@ -191,6 +191,79 @@
     "w": 8,
     "x": 16,
     "y": 7
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "short"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "opspod_queue_depth",
+     "legendFormat": "depth",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     }
+    },
+    {
+     "refId": "B",
+     "expr": "opspod_queue_oldest_age_seconds",
+     "legendFormat": "oldest age (s)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 7,
+   "type": "timeseries",
+   "title": "LLM rate-limit queue wait p95 (s)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 8,
+    "x": 0,
+    "y": 14
+   },
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s"
+    },
+    "overrides": []
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "histogram_quantile(0.95, sum(rate(opspod_llm_queue_wait_seconds_bucket[5m])) by (le, provider))",
+     "legendFormat": "{{provider}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 8,
+   "type": "timeseries",
+   "title": "Step latency p95 (s)",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "prometheus"
+   },
+   "gridPos": {
+    "h": 7,
+    "w": 8,
+    "x": 8,
+    "y": 14
    },
    "fieldConfig": {
     "defaults": {
@@ -211,7 +284,7 @@
    ]
   },
   {
-   "id": 7,
+   "id": 9,
    "type": "timeseries",
    "title": "LLM calls by outcome",
    "datasource": {
@@ -221,7 +294,7 @@
    "gridPos": {
     "h": 7,
     "w": 8,
-    "x": 0,
+    "x": 16,
     "y": 14
    },
    "fieldConfig": {
@@ -243,7 +316,7 @@
    ]
   },
   {
-   "id": 8,
+   "id": 10,
    "type": "timeseries",
    "title": "LLM latency p95 (s)",
    "datasource": {
@@ -253,8 +326,8 @@
    "gridPos": {
     "h": 7,
     "w": 8,
-    "x": 8,
-    "y": 14
+    "x": 0,
+    "y": 21
    },
    "fieldConfig": {
     "defaults": {
@@ -275,7 +348,7 @@
    ]
   },
   {
-   "id": 9,
+   "id": 11,
    "type": "timeseries",
    "title": "LLM error / 429 rate",
    "datasource": {
@@ -285,8 +358,8 @@
    "gridPos": {
     "h": 7,
     "w": 8,
-    "x": 16,
-    "y": 14
+    "x": 8,
+    "y": 21
    },
    "fieldConfig": {
     "defaults": {
@@ -316,7 +389,7 @@
    ]
   },
   {
-   "id": 10,
+   "id": 12,
    "type": "timeseries",
    "title": "Fallback and repair usage (per min)",
    "datasource": {
@@ -326,7 +399,7 @@
    "gridPos": {
     "h": 7,
     "w": 8,
-    "x": 0,
+    "x": 16,
     "y": 21
    },
    "fieldConfig": {
@@ -357,7 +430,7 @@
    ]
   },
   {
-   "id": 11,
+   "id": 13,
    "type": "timeseries",
    "title": "Token usage (per min)",
    "datasource": {
@@ -367,8 +440,8 @@
    "gridPos": {
     "h": 7,
     "w": 8,
-    "x": 8,
-    "y": 21
+    "x": 0,
+    "y": 28
    },
    "fieldConfig": {
     "defaults": {
@@ -389,7 +462,7 @@
    ]
   },
   {
-   "id": 12,
+   "id": 14,
    "type": "timeseries",
    "title": "Approval queue depth",
    "datasource": {
@@ -399,8 +472,8 @@
    "gridPos": {
     "h": 7,
     "w": 8,
-    "x": 16,
-    "y": 21
+    "x": 8,
+    "y": 28
    },
    "fieldConfig": {
     "defaults": {
@@ -421,7 +494,7 @@
    ]
   },
   {
-   "id": 13,
+   "id": 15,
    "type": "timeseries",
    "title": "Approval wait p95 (s)",
    "datasource": {
@@ -431,7 +504,7 @@
    "gridPos": {
     "h": 7,
     "w": 8,
-    "x": 0,
+    "x": 16,
     "y": 28
    },
    "fieldConfig": {
@@ -453,7 +526,7 @@
    ]
   },
   {
-   "id": 14,
+   "id": 16,
    "type": "timeseries",
    "title": "Reversals (per hour)",
    "datasource": {
@@ -463,8 +536,8 @@
    "gridPos": {
     "h": 7,
     "w": 8,
-    "x": 8,
-    "y": 28
+    "x": 0,
+    "y": 35
    },
    "fieldConfig": {
     "defaults": {
@@ -485,7 +558,7 @@
    ]
   },
   {
-   "id": 15,
+   "id": 17,
    "type": "timeseries",
    "title": "Policy violations blocked (5m)",
    "datasource": {
@@ -495,8 +568,8 @@
    "gridPos": {
     "h": 7,
     "w": 8,
-    "x": 16,
-    "y": 28
+    "x": 8,
+    "y": 35
    },
    "fieldConfig": {
     "defaults": {
@@ -517,7 +590,7 @@
    ]
   },
   {
-   "id": 16,
+   "id": 18,
    "type": "timeseries",
    "title": "Idempotent replays (5m)",
    "datasource": {
@@ -527,7 +600,7 @@
    "gridPos": {
     "h": 7,
     "w": 8,
-    "x": 0,
+    "x": 16,
     "y": 35
    },
    "fieldConfig": {
@@ -549,7 +622,7 @@
    ]
   },
   {
-   "id": 17,
+   "id": 19,
    "type": "timeseries",
    "title": "Dead letter depth",
    "datasource": {
@@ -559,8 +632,8 @@
    "gridPos": {
     "h": 7,
     "w": 8,
-    "x": 8,
-    "y": 35
+    "x": 0,
+    "y": 42
    },
    "fieldConfig": {
     "defaults": {
@@ -581,7 +654,7 @@
    ]
   },
   {
-   "id": 18,
+   "id": 20,
    "type": "timeseries",
    "title": "Pipeline step errors (5m)",
    "datasource": {
@@ -591,8 +664,8 @@
    "gridPos": {
     "h": 7,
     "w": 8,
-    "x": 16,
-    "y": 35
+    "x": 8,
+    "y": 42
    },
    "fieldConfig": {
     "defaults": {

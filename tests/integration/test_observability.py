@@ -147,3 +147,24 @@ async def test_metrics_endpoint_alert_webhook_and_log_auth(sessionmaker_):
             "/internal/alerts", json=hook, headers={"Authorization": "Bearer dev-analyst"}
         )
         assert bad.status_code == 403
+
+
+async def test_e2e_latency_and_queue_metrics_exist(sessionmaker_):
+    """PM-001: the SLO metric must include queue wait, and queue depth/age must be exported."""
+    await set_mode(sessionmaker_, AutonomyMode.AUTO_LOW_RISK)
+    deps, _ = make_deps(sessionmaker_)
+    before = sample("opspod_case_e2e_seconds_count")
+    case = next(c for c in BY_TAG["clear_cut"] if c["expected"]["route"] == "auto")
+    await run_case(deps, await submit(sessionmaker_, case))
+    assert sample("opspod_case_e2e_seconds_count") == before + 1
+
+    async def enqueue(_: str) -> None:
+        return None
+
+    async def stats() -> tuple[int, float]:
+        return 81, 131.0
+
+    app = create_app(deps, enqueue, queue_stats=stats)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as c:
+        text = (await c.get("/metrics")).text
+    assert "opspod_queue_depth 81.0" in text and "opspod_queue_oldest_age_seconds 131.0" in text

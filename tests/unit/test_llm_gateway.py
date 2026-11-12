@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 import httpx
@@ -20,7 +21,7 @@ from opspod.llm.providers.cassette import CassetteMiss, CassetteProvider
 from opspod.llm.providers.fake import FakeProvider
 from opspod.llm.providers.gemini import GeminiProvider
 from opspod.llm.providers.openrouter import OpenRouterProvider
-from opspod.llm.resilience import BudgetGuard, CircuitBreaker, TokenBucket
+from opspod.llm.resilience import BudgetGuard, CircuitBreaker, RateLimitWaitExceeded, TokenBucket
 from opspod.prompts import load_prompt, wrap_untrusted
 
 GOOD = '{"label": "ok", "n": 3}'
@@ -47,6 +48,7 @@ class Clock:
 def make(script, models=("m1",), clock=None, **cfg):
     clock = clock or Clock()
     fake = FakeProvider(script)
+    cfg.setdefault("limits", {"fake": ProviderLimits(requests_per_minute=6000)})
     config = LLMConfig(
         tasks={"analyze": [Candidate(provider="fake", model=m) for m in models]}, **cfg
     )
@@ -343,3 +345,89 @@ def test_prompts_versioned_and_untrusted_wrapping():
         load_prompt("nonexistent")
     with pytest.raises(ConfigError):
         load_prompt("analyze", 99)
+
+
+# ---- PM-001 regression: bounded rate-limit waits, shedding instead of queueing ------------
+
+
+async def test_limiter_wait_is_bounded_and_overload_is_shed():
+    """8 concurrent callers on a 30 rpm provider: 5 burst, 2 short waits, the rest shed."""
+    waits: list[float] = []
+
+    async def record_only(s: float) -> None:  # does not advance the clock: callers are concurrent
+        waits.append(s)
+
+    tb = TokenBucket(30, clock=lambda: 1000.0, sleep=record_only)
+    results = await asyncio.gather(
+        *[tb.acquire(max_wait=5) for _ in range(8)], return_exceptions=True
+    )
+    shed = [r for r in results if isinstance(r, RateLimitWaitExceeded)]
+    assert sorted(waits) == [2.0, 4.0] and len(shed) == 1
+    assert max(waits) <= 5  # the wait a caller is told is bounded by max_wait, not by the queue
+
+
+async def test_overloaded_primary_sheds_to_fallback_without_tripping_breaker():
+    cfg = LLMConfig(
+        tasks={
+            "analyze": [Candidate(provider="a", model="ma"), Candidate(provider="b", model="mb")]
+        },
+        limits={
+            "a": ProviderLimits(requests_per_minute=6),
+            "b": ProviderLimits(requests_per_minute=600),
+        },
+        breaker_threshold=2,
+    )
+    a, b = FakeProvider([GOOD, GOOD], name="a"), FakeProvider([GOOD, GOOD], name="b")
+    events = []
+
+    async def frozen_sleep(_: float) -> None:
+        return None
+
+    gw = Gateway(
+        cfg, {"a": a, "b": b}, clock=lambda: 1000.0, sleep=frozen_sleep, on_event=events.append
+    )
+    first = await run(gw, user="one")
+    second = await run(gw, user="two")  # a's single slot is taken: shed, served by b
+    third = await run(gw, user="three")
+    assert (first.provider, second.provider, third.provider) == ("a", "b", "b")
+    assert [e.outcome for e in events if e.provider == "a"].count("shed") == 2
+    assert gw._breakers["a"].state == "closed"  # shedding is not a provider failure
+
+
+async def test_all_providers_saturated_raises_unavailable_quickly():
+    cfg = LLMConfig(
+        tasks={"analyze": [Candidate(provider="a", model="ma")]},
+        limits={"a": ProviderLimits(requests_per_minute=6)},
+    )
+    gw = Gateway(cfg, {"a": FakeProvider([GOOD, GOOD], name="a")}, clock=lambda: 1000.0)
+    await run(gw, user="one")
+    with pytest.raises(LLMUnavailable, match="rate limit wait"):
+        await run(gw, user="two")  # no 30 second queueing: fails fast so the case can escalate
+
+
+async def test_queue_wait_is_reported_on_events():
+    clock = Clock()
+    cfg = LLMConfig(
+        tasks={"analyze": [Candidate(provider="a", model="ma")]},
+        limits={"a": ProviderLimits(requests_per_minute=60)},
+    )
+    events = []
+    gw = Gateway(
+        cfg,
+        {"a": FakeProvider([GOOD] * 20, name="a")},
+        clock=lambda: 1000.0,
+        sleep=clock.sleep,
+        on_event=events.append,
+    )
+    for i in range(12):
+        await run(gw, user=f"u{i}")
+    assert any(e.queue_wait_s > 0 for e in events if e.outcome == "ok")
+
+
+async def test_fake_mode_providers_are_not_rate_limited_by_default():
+    """Regression: bounded queue waits must not shed bursts in stub/CI evals."""
+    gw = build_gateway(
+        LLMMode.FAKE, LLMConfig(), Settings(_env_file=None), fake=FakeProvider(lambda s, u: GOOD)
+    )
+    for i in range(40):  # far above the 10 req/min default for unconfigured providers
+        assert (await run(gw, user=f"burst-{i}")).parsed.n == 3

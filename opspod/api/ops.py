@@ -1,6 +1,8 @@
 """Approvals, reversals, replay and admin flags."""
 
 import uuid
+from collections.abc import Awaitable, Callable
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Request
@@ -8,10 +10,19 @@ from pydantic import BaseModel
 from sqlalchemy import select
 
 from opspod.api.auth import require_role
+from opspod.core.chaos import CHAOS_KEY, Chaos
 from opspod.core.errors import LedgerError, PermissionDenied
 from opspod.db.audit import write_audit
-from opspod.db.flags import AUTONOMY_KEY, KILL_KEY, Autonomy, get_autonomy, kill_switch_on, set_flag
-from opspod.db.models import Approval, Case, Decision
+from opspod.db.flags import (
+    AUTONOMY_KEY,
+    KILL_KEY,
+    Autonomy,
+    get_autonomy,
+    get_chaos,
+    kill_switch_on,
+    set_flag,
+)
+from opspod.db.models import Approval, Case, DeadLetter, Decision
 from opspod.domain.enums import Role
 from opspod.pipeline.approvals import (
     ApprovalConflict,
@@ -82,7 +93,7 @@ def http_error(exc: Exception) -> HTTPException:
     return HTTPException(mapping.get(type(exc), 400), str(exc))
 
 
-def register_ops(app: FastAPI, deps: Deps) -> None:
+def register_ops(app: FastAPI, deps: Deps, enqueue: Callable[..., Awaitable[None]]) -> None:
     @app.get("/v1/approvals")
     async def approvals(status: str = "pending", _: Role = ANALYST_UP) -> list[dict[str, Any]]:
         return await list_pending(deps, status)
@@ -152,3 +163,49 @@ def register_ops(app: FastAPI, deps: Deps) -> None:
                 "autonomy": (await get_autonomy(s)).model_dump(mode="json"),
                 "kill_switch": await kill_switch_on(s),
             }
+
+    @app.get("/v1/admin/chaos")
+    async def get_chaos_flags(_: Role = ADMIN) -> dict[str, Any]:
+        async with deps.sessionmaker() as s:
+            return (await get_chaos(s)).model_dump()
+
+    @app.post("/v1/admin/chaos")
+    async def set_chaos_flags(body: Chaos, request: Request, _: Role = ADMIN) -> dict[str, Any]:
+        if request.app.state.app_env != "dev":
+            raise HTTPException(404, "not found")  # failure injection is dev-only
+        async with deps.sessionmaker() as s, s.begin():
+            await set_flag(s, CHAOS_KEY, body.model_dump(), actor_of(request))
+            await write_audit(
+                s,
+                case_id=None,
+                event="chaos.changed",
+                actor=actor_of(request),
+                payload=body.model_dump(),
+            )
+        return body.model_dump()
+
+    @app.post("/v1/admin/dlq/{dl_id}/retry")
+    async def retry_dead_letter(
+        dl_id: uuid.UUID, request: Request, _: Role = APPROVER
+    ) -> dict[str, Any]:
+        """After fixing the cause: resolve the dead letter, re-run from the last step."""
+        async with deps.sessionmaker() as s, s.begin():
+            dl = await s.get(DeadLetter, dl_id)
+            if dl is None:
+                raise HTTPException(404, "dead letter not found")
+            if dl.resolved_at is not None:
+                raise HTTPException(409, "dead letter already resolved")
+            dl.resolved_at, dl.resolved_by = datetime.now(UTC), actor_of(request)
+            case = await s.get(Case, dl.case_id)
+            if case is not None:
+                case.status = "processing"
+            await write_audit(
+                s,
+                case_id=dl.case_id,
+                event="dlq.retry",
+                actor=actor_of(request),
+                payload={"dead_letter_id": str(dl_id)},
+            )
+            case_id = dl.case_id
+        await enqueue(str(case_id), force=True)  # fresh job id; the runner resumes from state
+        return {"case_id": str(case_id), "requeued": True}

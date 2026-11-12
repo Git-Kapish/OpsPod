@@ -259,3 +259,37 @@ async def test_llm_case_review_flow(env):
         f"/v1/approvals/{appr.id}/decision", json={"decision": "approve"}, headers=APPROVER
     )
     assert r.status_code == 200 and await paid(sm, cid) == case["expected"]["amount"]
+
+
+async def test_dlq_retry_resumes_the_case_and_is_single_use(env):
+    from opspod.db.models import DeadLetter
+    from opspod.pipeline.worker import dead_letter
+
+    c, deps, sm = env
+    queued: list[tuple[str, bool]] = []
+
+    async def enqueue(cid: str, force: bool = False) -> None:
+        queued.append((cid, force))
+
+    app = create_app(deps, enqueue)
+    await set_mode(sm, AutonomyMode.AUTO_LOW_RISK)
+    cid = await submit(sm, money_case())
+    await dead_letter(deps, cid, "RuntimeError: boom", 3)
+    async with sm() as s:
+        dl = (await s.execute(select(DeadLetter).where(DeadLetter.case_id == cid))).scalar_one()
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as cl:
+        assert (await cl.post(f"/v1/admin/dlq/{dl.id}/retry", headers=ANALYST)).status_code == 403
+        r = await cl.post(f"/v1/admin/dlq/{dl.id}/retry", headers=APPROVER)
+        assert r.status_code == 200 and queued == [(str(cid), True)]
+        assert (await cl.post(f"/v1/admin/dlq/{dl.id}/retry", headers=APPROVER)).status_code == 409
+        assert (
+            await cl.post(f"/v1/admin/dlq/{uuid.uuid4()}/retry", headers=APPROVER)
+        ).status_code == 404
+    async with sm() as s:
+        assert (await s.get(Case, cid)).status == "processing"
+    state = await run_case(deps, cid)  # the "worker" picks it up and finishes
+    assert state.final_status == "resolved" and await paid(sm, cid) == money_amount()
+
+
+def money_amount() -> int:
+    return money_case()["expected"]["amount"]

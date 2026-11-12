@@ -5,10 +5,12 @@ from pathlib import Path
 
 import httpx
 
+from opspod.core.chaos import ChaosSource
 from opspod.core.config import LLMMode, Settings
-from opspod.llm.config import Candidate, LLMConfig
+from opspod.llm.config import Candidate, LLMConfig, ProviderLimits
 from opspod.llm.gateway import CallEvent, Gateway
 from opspod.llm.providers.cassette import CassetteProvider
+from opspod.llm.providers.chaos import ChaosProvider
 from opspod.llm.providers.fake import FakeProvider
 from opspod.llm.providers.gemini import GeminiProvider
 from opspod.llm.providers.openrouter import OpenRouterProvider
@@ -27,12 +29,15 @@ def build_gateway(
     record_cassettes: bool = False,
     cassette_dir: Path = CASSETTE_DIR,
     on_event: Callable[[CallEvent], None] | None = None,
+    chaos: ChaosSource | None = None,
 ) -> Gateway:
     names = {c.provider for chain in config.tasks.values() for c in chain}
     providers: dict[str, Provider]
     if mode is LLMMode.FAKE:
         fake = fake or FakeProvider()
         providers = {"fake": fake}
+        for extra in names - {"fake"}:  # multi-provider demos/incident drills
+            providers[extra] = FakeProvider(fake.script, name=extra)
         if not any(config.tasks.values()):  # no probe results needed for tests
             config = config.model_copy(
                 update={"tasks": {t: [Candidate(provider="fake", model="fake-1")] for t in TASKS}}
@@ -53,4 +58,9 @@ def build_gateway(
             if record_cassettes
             else live
         )
+    if mode is LLMMode.FAKE:  # fakes have no real limit unless the config sets one
+        limits = {n: ProviderLimits(requests_per_minute=6000, daily_calls=10**9) for n in providers}
+        config = config.model_copy(update={"limits": {**limits, **config.limits}})
+    if chaos is not None:
+        providers = {n: ChaosProvider(p, chaos) for n, p in providers.items()}
     return Gateway(config, providers, on_event=on_event)

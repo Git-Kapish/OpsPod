@@ -32,7 +32,7 @@ tests:
         alertname: LLMErrorRateHigh
         exp_alerts: []
 
-  - name: 429 storm
+  - name: 429 storm, including the breaker hiding it
     interval: 1m
     input_series:
       - series: 'opspod_llm_calls_total{provider="p",model="m",outcome="rate_limited"}'
@@ -115,3 +115,48 @@ tests:
             exp_annotations:
               summary: "Escalation rate above 60%"
               runbook: "docs/runbook.md#escalation-anomaly"
+
+  - name: breaker-hidden 429 storm still alerts (PM-001)
+    interval: 1m
+    input_series:
+      - series: 'opspod_llm_calls_total{provider="primary",model="m",outcome="breaker_open"}'
+        values: "0+28x20"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: LLMRateLimitStorm
+        exp_alerts:
+          - exp_labels: {severity: page}
+            exp_annotations:
+              summary: "Provider 429 storm"
+              runbook: "docs/runbook.md#llm-rate-limit-storm"
+
+  - name: queue age pages even when processing latency looks healthy (PM-001)
+    interval: 1m
+    input_series:
+      - series: "opspod_queue_oldest_age_seconds"
+        values: "0 0 5 40 90 131 131 131"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: QueueBacklogAge
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: QueueBacklogAge
+        exp_alerts:
+          - exp_labels: {severity: page}
+            exp_annotations:
+              summary: "Oldest queued case has waited more than 30s"
+              runbook: "docs/runbook.md#queue-backlog"
+
+  - name: load shedding is visible
+    interval: 1m
+    input_series:
+      - series: 'opspod_llm_calls_total{provider="secondary",model="m",outcome="shed"}'
+        values: "0+20x20"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: LLMLoadShedding
+        exp_alerts:
+          - exp_labels: {severity: ticket}
+            exp_annotations:
+              summary: "LLM providers saturated: excess cases are being sent to humans"
+              runbook: "docs/runbook.md#llm-load-shedding"

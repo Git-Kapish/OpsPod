@@ -1,6 +1,6 @@
 RUN = uv run
 
-.PHONY: alerts-test dashboards up down migrate seed dev worker test lint eval eval-live probe chaos
+.PHONY: rollout alerts-test dashboards up down migrate seed dev worker test lint eval eval-live probe chaos
 
 up:
 	docker compose up -d
@@ -32,3 +32,6 @@ alerts-test:
 	MSYS_NO_PATHCONV=1 docker run --rm --entrypoint promtool -v "$(CURDIR)/infra:/infra" prom/prometheus:v2.53.0 test rules /infra/alerts_test.yml
 dashboards:
 	$(RUN) python scripts/make_dashboard.py
+
+rollout:
+	$(RUN) python scripts/rollout_sim.py

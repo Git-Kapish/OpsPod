@@ -29,6 +29,7 @@ from opspod.llm.resilience import (
     CircuitBreaker,
     Clock,
     LRUCache,
+    RateLimitWaitExceeded,
     Sleep,
     TokenBucket,
 )
@@ -48,6 +49,7 @@ class CallEvent:
     tokens_in: int = 0
     tokens_out: int = 0
     repaired: bool = False
+    queue_wait_s: float = 0.0  # time spent waiting for a rate-limit slot
 
 
 def extract_json(text: str) -> str:
@@ -179,10 +181,14 @@ class Gateway:
         while True:
             try:
                 budget.check()
-                await limiter.acquire(self._cfg.max_wait_s)
+                waited = await limiter.acquire(self._cfg.queue_wait_s)
+            except RateLimitWaitExceeded:
+                self._emit(task, cand, "shed")  # overloaded: fall back or escalate, don't queue
+                breaker.release()
+                raise
             except LLMUnavailable:
                 self._emit(task, cand, "budget")
-                breaker.record_failure()
+                breaker.release()
                 raise
             t0 = self._clock()
             calls += 1
@@ -207,7 +213,7 @@ class Gateway:
                     if isinstance(exc, LLMTimeout | TimeoutError)
                     else "error"
                 )
-                self._emit(task, cand, outcome, latency_s=self._clock() - t0)
+                self._emit(task, cand, outcome, latency_s=self._clock() - t0, queue_wait_s=waited)
                 retry_after = exc.retry_after if isinstance(exc, LLMRateLimited) else None
                 if isinstance(exc, LLMRateLimited):
                     limiter.penalize(retry_after)
@@ -233,6 +239,7 @@ class Gateway:
                     tokens_in=raw.tokens_in,
                     tokens_out=raw.tokens_out,
                     repaired=repaired,
+                    queue_wait_s=waited,
                 )
                 if repaired:
                     raise LLMInvalidOutput(f"{cand.model} output invalid after repair") from exc
@@ -250,6 +257,7 @@ class Gateway:
                 tokens_in=raw.tokens_in,
                 tokens_out=raw.tokens_out,
                 repaired=repaired,
+                queue_wait_s=waited,
             )
             result = LLMResult(
                 parsed=parsed,

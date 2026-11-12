@@ -16,7 +16,7 @@ from opspod.observability.metrics import DLQ_TOTAL
 from opspod.observability.tracing import configure_exporter
 from opspod.pipeline.bootstrap import build_deps
 from opspod.pipeline.deps import Deps
-from opspod.pipeline.runner import run_case
+from opspod.pipeline.runner import CaseLocked, run_case
 
 MAX_TRIES = 3
 INCOMPLETE = ("received", "processing")
@@ -43,6 +43,8 @@ async def process_case(ctx: dict[str, Any], case_id: str) -> str:
     deps: Deps = ctx["deps"]
     try:
         state = await run_case(deps, uuid.UUID(case_id))
+    except CaseLocked:
+        return "busy"  # a duplicate delivery; the worker holding the lock finishes the case
     except Exception as exc:  # noqa: BLE001 - retry, then DLQ; never swallow silently
         tries = int(ctx.get("job_try", 1))
         if tries >= MAX_TRIES:
@@ -75,5 +77,6 @@ class WorkerSettings:
     functions = [process_case]
     on_startup = startup
     max_tries = MAX_TRIES
+    max_jobs = 8  # each running case holds a lock connection plus a step connection
     job_timeout = 120
     redis_settings = RedisSettings.from_dsn(get_settings().redis_url)

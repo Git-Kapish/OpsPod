@@ -51,9 +51,10 @@ select = ["E", "F", "I", "B", "UP", "S", "BLE"]
 ignore = ["S101", "UP046", "UP047"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S"]
+"tests/**" = ["S", "E501"]
 "scripts/**" = ["S311"]
 "scripts/make_dashboard.py" = ["E501"]
+"scripts/prom_snapshot.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"

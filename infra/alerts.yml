@@ -12,7 +12,8 @@ groups:
           runbook: "docs/runbook.md#llm-error-rate"
 
       - alert: LLMRateLimitStorm
-        expr: sum(rate(opspod_llm_calls_total{outcome="rate_limited"}[5m])) > 0.2
+        # breaker_open counts too: once the breaker trips it hides the raw 429s (see PM-001)
+        expr: sum(rate(opspod_llm_calls_total{outcome=~"rate_limited|breaker_open"}[5m])) > 0.2
         for: 2m
         labels: {severity: page}
         annotations:
@@ -71,12 +72,28 @@ groups:
 
       - alert: CaseLatencySLOBurn
         expr: >
-          histogram_quantile(0.95, sum(rate(opspod_case_duration_seconds_bucket[10m])) by (le)) > 30
+          histogram_quantile(0.95, sum(rate(opspod_case_e2e_seconds_bucket[10m])) by (le)) > 30
         for: 5m
         labels: {severity: page}
         annotations:
-          summary: "p95 case latency above the 30s SLO"
+          summary: "p95 intake-to-decision latency (including queue wait) above the 30s SLO"
           runbook: "docs/runbook.md#latency-slo"
+
+      - alert: QueueBacklogAge
+        expr: opspod_queue_oldest_age_seconds > 30
+        for: 1m
+        labels: {severity: page}
+        annotations:
+          summary: "Oldest queued case has waited more than 30s"
+          runbook: "docs/runbook.md#queue-backlog"
+
+      - alert: LLMLoadShedding
+        expr: sum(rate(opspod_llm_calls_total{outcome="shed"}[5m])) > 0.1
+        for: 2m
+        labels: {severity: ticket}
+        annotations:
+          summary: "LLM providers saturated: excess cases are being sent to humans"
+          runbook: "docs/runbook.md#llm-load-shedding"
 
       - alert: PipelineErrorBudgetBurn
         expr: >

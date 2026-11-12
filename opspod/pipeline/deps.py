@@ -4,6 +4,7 @@ from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from opspod.core.chaos import ChaosSource
 from opspod.llm.gateway import Gateway
 from opspod.policy.models import RegionPolicy
 from opspod.skills.base import Skill
@@ -23,4 +24,5 @@ class Deps:
     llm_tone: bool = False  # extra LLM call per case; off by default to protect free quotas
     # Test/chaos hook: called with the step name just before it runs; may raise to simulate a crash.
     before_step: Callable[[str], None] | None = None
+    chaos: ChaosSource | None = None
     extras: dict[str, Any] = field(default_factory=dict)

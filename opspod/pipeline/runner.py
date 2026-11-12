@@ -6,12 +6,13 @@ step can never pay twice. Failures are recorded and re-raised; the worker retrie
 dead-letters.
 """
 
+import asyncio
 import time
 import uuid
 from collections.abc import Awaitable, Callable
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from opspod.core.errors import OpsPodError
@@ -94,8 +95,25 @@ async def _record_failure(deps: Deps, case_id: uuid.UUID, step: str, exc: Except
         )
 
 
+class CaseLocked(OpsPodError):
+    """Another worker is already processing this case; the duplicate delivery backs off."""
+
+
 async def run_case(deps: Deps, case_id: uuid.UUID) -> CaseState:
-    """Run (or resume) a case. trace_id == case_id; every step is a span and a metric."""
+    """Run (or resume) a case. At most one worker runs a case at a time (advisory lock)."""
+    key = case_id.int & 0x7FFFFFFFFFFFFFFF  # pg advisory locks take a signed bigint
+    async with deps.sessionmaker() as lock_session:
+        got = await lock_session.execute(text("select pg_try_advisory_lock(:k)"), {"k": key})
+        if not got.scalar_one():
+            raise CaseLocked(str(case_id))
+        try:
+            return await _run_locked(deps, case_id)
+        finally:  # explicit: the lock belongs to the pooled connection, not the session
+            await lock_session.execute(text("select pg_advisory_unlock(:k)"), {"k": key})
+
+
+async def _run_locked(deps: Deps, case_id: uuid.UUID) -> CaseState:
+    """trace_id == case_id; every step is a span and a metric."""
     started = time.perf_counter()
     structlog.contextvars.bind_contextvars(case_id=str(case_id), trace_id=case_id.hex)
     try:
@@ -121,6 +139,8 @@ async def _run_step(
     t0 = time.perf_counter()
     try:
         with span(f"step.{name}", step=name):
+            if deps.chaos is not None and (delay := (await deps.chaos.get()).slow_db_ms):
+                await asyncio.sleep(delay / 1000)
             if deps.before_step is not None:
                 deps.before_step(name)
             async with deps.sessionmaker() as s, s.begin():

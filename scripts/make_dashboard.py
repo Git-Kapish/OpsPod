@@ -39,17 +39,32 @@ PANELS = [
         [("sum by (status) (rate(opspod_cases_total[5m])) * 60", "{{status}}")],
     ),
     (
-        "Case latency p50/p95 (s)",
+        "Case latency p95 (s): end-to-end vs processing",
         "s",
         [
             (
-                "histogram_quantile(0.5, sum(rate(opspod_case_duration_seconds_bucket[5m])) by (le))",
-                "p50",
+                "histogram_quantile(0.95, sum(rate(opspod_case_e2e_seconds_bucket[5m])) by (le))",
+                "end-to-end (SLO)",
             ),
             (
                 "histogram_quantile(0.95, sum(rate(opspod_case_duration_seconds_bucket[5m])) by (le))",
-                "p95",
+                "processing only",
             ),
+        ],
+    ),
+    (
+        "Queue depth and oldest job age",
+        "short",
+        [("opspod_queue_depth", "depth"), ("opspod_queue_oldest_age_seconds", "oldest age (s)")],
+    ),
+    (
+        "LLM rate-limit queue wait p95 (s)",
+        "s",
+        [
+            (
+                "histogram_quantile(0.95, sum(rate(opspod_llm_queue_wait_seconds_bucket[5m])) by (le, provider))",
+                "{{provider}}",
+            )
         ],
     ),
     (

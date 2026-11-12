@@ -12,39 +12,42 @@ Clock = Callable[[], float]
 Sleep = Callable[[float], Awaitable[None]]
 
 
+class RateLimitWaitExceeded(LLMUnavailable):
+    """Shed load: waiting for a rate-limit slot would take longer than the queue-wait bound."""
+
+
 class TokenBucket:
-    """Per-provider limiter: queue callers instead of burning 429s; honors Retry-After."""
+    """Per-provider limiter that reserves slots instead of holding a lock while sleeping.
+
+    Each caller reserves the next free slot (GCRA) and sleeps outside any lock, so the wait it
+    is told is the wait it gets. If that wait exceeds `max_wait` the call is shed immediately
+    (the caller falls back or escalates) rather than parking a worker. Honors Retry-After.
+    """
 
     def __init__(
         self, per_minute: float, *, clock: Clock = time.monotonic, sleep: Sleep = asyncio.sleep
     ) -> None:
-        self._rate = per_minute / 60.0
-        self._cap = max(1.0, per_minute / 6)  # small burst; free tiers dislike spikes
-        self._tokens = self._cap
-        self._clock, self._sleep = clock, sleep
-        self._last = clock()
+        self._interval = 60.0 / per_minute
+        self._burst = max(1.0, per_minute / 6)  # small burst; free tiers dislike spikes
+        self._tat = 0.0  # time the next slot becomes free
         self._blocked_until = 0.0
-        self._lock = asyncio.Lock()
+        self._clock, self._sleep = clock, sleep
 
     def penalize(self, seconds: float | None) -> None:
         """Provider said Retry-After: block all callers for that long."""
         self._blocked_until = max(self._blocked_until, self._clock() + (seconds or 1.0))
 
-    async def acquire(self, max_wait: float = 30.0) -> None:
-        async with self._lock:
-            now = self._clock()
-            self._tokens = min(self._cap, self._tokens + (now - self._last) * self._rate)
-            self._last = now
-            wait = max(0.0, self._blocked_until - now)
-            if self._tokens < 1.0:
-                wait = max(wait, (1.0 - self._tokens) / self._rate)
-            if wait > max_wait:
-                raise LLMUnavailable(f"rate limit wait {wait:.0f}s exceeds {max_wait:.0f}s")
-            if wait:
-                await self._sleep(wait)
-                self._tokens = min(self._cap, self._tokens + wait * self._rate)
-                self._last = self._clock()
-            self._tokens -= 1.0
+    async def acquire(self, max_wait: float = 5.0) -> float:
+        """Reserve a slot; returns seconds waited. Raises RateLimitWaitExceeded if too long."""
+        now = self._clock()
+        tat = max(self._tat, now)
+        wait = max(self._blocked_until - now, tat - now - (self._burst - 1.0) * self._interval, 0.0)
+        if wait > max_wait:
+            raise RateLimitWaitExceeded(f"rate limit wait {wait:.0f}s exceeds {max_wait:.0f}s")
+        self._tat = max(tat, now + wait) + self._interval  # reserve before sleeping
+        if wait:
+            await self._sleep(wait)
+        return wait
 
 
 class CircuitBreaker:
@@ -72,6 +75,10 @@ class CircuitBreaker:
             self._probing = True
             return True
         return False
+
+    def release(self) -> None:
+        """A half-open probe was abandoned without reaching the provider (shed or over budget)."""
+        self._probing = False
 
     def record_success(self) -> None:
         self._failures, self._opened_at, self._probing = 0, None, False

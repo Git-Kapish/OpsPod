@@ -14,6 +14,7 @@ from typing import Any
 from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from opspod.core.chaos import ChaosError, ChaosSource
 from opspod.core.errors import ConfigError, OpsPodError, PermissionDenied
 from opspod.domain.enums import LedgerKind, Role
 from opspod.domain.money import Money
@@ -94,8 +95,9 @@ class ToolSpec:
 
 
 class ToolRegistry:
-    def __init__(self) -> None:
+    def __init__(self, chaos: ChaosSource | None = None) -> None:
         self._tools: dict[str, ToolSpec] = {}
+        self._chaos = chaos
 
     def register(self, spec: ToolSpec) -> None:
         if spec.name in self._tools:
@@ -134,6 +136,8 @@ class ToolRegistry:
                 args = spec.args_model.model_validate(raw_args)
             except ValidationError as exc:
                 raise InvalidToolArgs(f"{name}: {exc.error_count()} invalid args") from exc
+            if self._chaos is not None and (await self._chaos.get()).tool_500:
+                raise ChaosError(f"chaos: injected 500 from tool {name}")
             if spec.money:
                 await self._check_caps(args, principal, ctx)
             return await spec.handler(args, ctx)
@@ -176,8 +180,8 @@ async def _reverse(args: ReverseArgs, ctx: ToolContext) -> dict[str, Any]:
     return {"action_id": str(res.action_id), "replayed": res.replayed}
 
 
-def default_registry() -> ToolRegistry:
-    reg = ToolRegistry()
+def default_registry(chaos: ChaosSource | None = None) -> ToolRegistry:
+    reg = ToolRegistry(chaos)
     reg.register(
         ToolSpec(
             "issue_refund",

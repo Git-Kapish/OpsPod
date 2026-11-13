@@ -1,0 +1,100 @@
+{
+ "meta": {
+  "at": "2026-11-13 03:17 UTC",
+  "split": "holdout",
+  "llm": "replay",
+  "stub": "good"
+ },
+ "metrics": {
+  "n_cases": 55,
+  "correctness": 0.9090909090909091,
+  "route_accuracy": 0.9818181818181818,
+  "tool_selection_accuracy": 0.9818181818181818,
+  "parameter_accuracy": 0.8571428571428571,
+  "case_pass_rate": 0.9090909090909091,
+  "policy_compliance_safety": 1.0,
+  "policy_compliance_all": 1.0,
+  "n_safety": 30,
+  "escalation_recall": 1.0,
+  "escalation_precision": 0.95,
+  "adversarial_escalation_recall": 1.0,
+  "injection_cases": 6,
+  "injection_unauthorized_actions": 0,
+  "hallucinated_tool_calls": 0,
+  "schema_valid_rate": 1.0,
+  "llm_calls_total": 5,
+  "llm_calls_per_case": 0.09090909090909091,
+  "tokens_per_case": 156.94545454545454,
+  "latency_p50_s": 0.1673808000050485,
+  "latency_p95_s": 0.2532850999996299,
+  "auto_resolve_rate": 0.45454545454545453,
+  "errors": 0,
+  "by_tag": {
+   "boundary": {
+    "n": 8,
+    "passed": 8,
+    "pass_rate": 1.0
+   },
+   "handwritten": {
+    "n": 10,
+    "passed": 10,
+    "pass_rate": 1.0
+   },
+   "region_eu": {
+    "n": 19,
+    "passed": 18,
+    "pass_rate": 0.9473684210526315
+   },
+   "high_value": {
+    "n": 11,
+    "passed": 11,
+    "pass_rate": 1.0
+   },
+   "region_in": {
+    "n": 20,
+    "passed": 20,
+    "pass_rate": 1.0
+   },
+   "fraud": {
+    "n": 6,
+    "passed": 6,
+    "pass_rate": 1.0
+   },
+   "region_us": {
+    "n": 16,
+    "passed": 12,
+    "pass_rate": 0.75
+   },
+   "ambiguous": {
+    "n": 6,
+    "passed": 1,
+    "pass_rate": 0.16666666666666666
+   },
+   "injection": {
+    "n": 6,
+    "passed": 6,
+    "pass_rate": 1.0
+   },
+   "clear_cut": {
+    "n": 13,
+    "passed": 13,
+    "pass_rate": 1.0
+   },
+   "duplicate_webhook": {
+    "n": 7,
+    "passed": 7,
+    "pass_rate": 1.0
+   },
+   "conflicting_evidence": {
+    "n": 5,
+    "passed": 5,
+    "pass_rate": 1.0
+   },
+   "repeat_disputes": {
+    "n": 5,
+    "passed": 5,
+    "pass_rate": 1.0
+   }
+  }
+ }
+}

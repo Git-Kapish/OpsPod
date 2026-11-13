@@ -8,6 +8,7 @@ from sqlalchemy import func, select
 from opspod.core.errors import LLMTimeout
 from opspod.db.flags import Autonomy, set_flag
 from opspod.db.models import (
+    Action,
     Approval,
     AuditLog,
     Case,
@@ -331,12 +332,8 @@ async def test_crash_after_payment_never_double_pays(sessionmaker_):
             await s.execute(
                 select(func.count())
                 .select_from(LedgerEntry)
-                .join(
-                    __import__("opspod.db.models", fromlist=["Action"]).Action,
-                    __import__("opspod.db.models", fromlist=["Action"]).Action.id
-                    == LedgerEntry.action_id,
-                )
-                .where(__import__("opspod.db.models", fromlist=["Action"]).Action.case_id == cid)
+                .join(Action, Action.id == LedgerEntry.action_id)
+                .where(Action.case_id == cid)
             )
         ).scalar_one()
     assert n == 1

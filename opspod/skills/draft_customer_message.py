@@ -38,7 +38,9 @@ class MessageOutput(BaseModel):
 
 
 def _tone_ok(s: str | None) -> bool:
-    return bool(s) and len(s) <= 160 and not re.search(r"\d", s) and not COMMITMENT.search(s)  # type: ignore[arg-type]
+    if not s:
+        return False
+    return len(s) <= 160 and not re.search(r"\d", s) and not COMMITMENT.search(s)
 
 
 def format_amount(minor: int, currency: str) -> str:

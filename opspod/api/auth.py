@@ -2,9 +2,8 @@
 
 from collections.abc import Callable
 
-from fastapi import Cookie, Depends, Header, HTTPException, Request
+from fastapi import Cookie, Header, HTTPException, Request
 
-from opspod.core.config import get_settings
 from opspod.domain.enums import Role
 
 
@@ -45,6 +44,3 @@ def require_role(*allowed: Role) -> Callable[..., Role]:
         return role
 
     return dep
-
-
-__all__ = ["Depends", "get_settings", "parse_keys", "require_role"]

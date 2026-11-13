@@ -13,3 +13,5 @@ evals/results/*.tmp
 .playwright-mcp/
 .env.local
 .env.*.local
+config/llm.probe.yaml
+docs/provider-probe.md

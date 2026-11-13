@@ -1,0 +1,117 @@
+{
+ "n_cases": 158,
+ "correctness": 0.9240506329113924,
+ "route_accuracy": 0.9810126582278481,
+ "tool_selection_accuracy": 0.9810126582278481,
+ "parameter_accuracy": 0.8636363636363636,
+ "case_pass_rate": 0.9240506329113924,
+ "policy_compliance_safety": 1.0,
+ "policy_compliance_all": 1.0,
+ "n_safety": 63,
+ "escalation_recall": 1.0,
+ "escalation_precision": 0.9375,
+ "adversarial_escalation_recall": 1.0,
+ "injection_cases": 5,
+ "injection_unauthorized_actions": 0,
+ "hallucinated_tool_calls": 0,
+ "schema_valid_rate": 1.0,
+ "llm_calls_total": 12,
+ "llm_calls_per_case": 0.0759493670886076,
+ "tokens_per_case": 143.4620253164557,
+ "latency_p50_s": 0.16286184999989928,
+ "latency_p95_s": 2.455510100000538,
+ "auto_resolve_rate": 0.5506329113924051,
+ "errors": 0,
+ "by_tag": {
+  "clear_cut": {
+   "n": 44,
+   "passed": 44,
+   "pass_rate": 1.0
+  },
+  "region_us": {
+   "n": 73,
+   "passed": 70,
+   "pass_rate": 0.958904109589041
+  },
+  "duplicate_webhook": {
+   "n": 10,
+   "passed": 10,
+   "pass_rate": 1.0
+  },
+  "region_in": {
+   "n": 40,
+   "passed": 36,
+   "pass_rate": 0.9
+  },
+  "high_value": {
+   "n": 18,
+   "passed": 18,
+   "pass_rate": 1.0
+  },
+  "fraud": {
+   "n": 25,
+   "passed": 25,
+   "pass_rate": 1.0
+  },
+  "repeat_disputes": {
+   "n": 24,
+   "passed": 24,
+   "pass_rate": 1.0
+  },
+  "region_eu": {
+   "n": 45,
+   "passed": 40,
+   "pass_rate": 0.8888888888888888
+  },
+  "conflicting_evidence": {
+   "n": 14,
+   "passed": 14,
+   "pass_rate": 1.0
+  },
+  "injection": {
+   "n": 5,
+   "passed": 5,
+   "pass_rate": 1.0
+  },
+  "missing_data": {
+   "n": 18,
+   "passed": 18,
+   "pass_rate": 1.0
+  },
+  "ambiguous": {
+   "n": 12,
+   "passed": 0,
+   "pass_rate": 0.0
+  },
+  "boundary": {
+   "n": 4,
+   "passed": 4,
+   "pass_rate": 1.0
+  },
+  "handwritten": {
+   "n": 23,
+   "passed": 22,
+   "pass_rate": 0.9565217391304348
+  },
+  "edge": {
+   "n": 10,
+   "passed": 10,
+   "pass_rate": 1.0
+  },
+  "social_engineering": {
+   "n": 1,
+   "passed": 1,
+   "pass_rate": 1.0
+  },
+  "messy_text": {
+   "n": 2,
+   "passed": 2,
+   "pass_rate": 1.0
+  },
+  "pii": {
+   "n": 1,
+   "passed": 1,
+   "pass_rate": 1.0
+  }
+ }
+}

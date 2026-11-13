@@ -56,4 +56,5 @@ URLs (the Gemini key goes in `x-goog-api-key`). Logs carry ids and hashes, not c
 - Chaos injection is honoured only when `APP_ENV=dev`.
 - Context (trips, payments, history) comes from a fixture-backed repository, not production
   systems; the `ContextRepo` protocol is where a real integration plugs in.
-- No real-model quality numbers exist yet (see `EVALS.md`).
+- Real-model numbers exist for one free model on a small set (see `EVALS.md`); prompts were sent to
+  that provider (synthetic, PII-redacted). `.env.local` holds the key and is git-ignored.

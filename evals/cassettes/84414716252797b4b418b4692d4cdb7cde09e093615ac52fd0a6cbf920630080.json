@@ -1,0 +1,7 @@
+{
+ "provider": "openrouter",
+ "model": "nvidia/nemotron-3.5-super-vl:free",
+ "text": "{\"case_type\": \"promo_not_applied\", \"outcome\": \"ESCALATE\", \"amount_basis\": \"none\", \"confidence\": 0.35, \"rationale\": \"Disputed charge far exceeds promo amount; customer is unsure of cause and has a prior dispute. Evidence is thin and potentially fraudulent.\", \"conflicting_evidence\": true, \"instructions_in_text\": false}",
+ "tokens_in": 823,
+ "tokens_out": 885
+}

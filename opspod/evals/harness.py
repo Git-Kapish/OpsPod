@@ -24,7 +24,7 @@ from opspod.domain.enums import AutonomyMode
 from opspod.evals.metrics import CaseResult
 from opspod.evals.stubs import STUBS
 from opspod.ledger.service import net_paid
-from opspod.llm.config import load_llm_config
+from opspod.llm.config import LLMConfig, load_llm_config
 from opspod.llm.factory import build_gateway
 from opspod.llm.gateway import CallEvent
 from opspod.llm.providers.fake import FakeProvider
@@ -79,6 +79,11 @@ def migrate(url: str) -> None:
     command.upgrade(cfg, "head")
 
 
+def _llm_config() -> LLMConfig:
+    path = get_settings().llm_config
+    return load_llm_config(Path(path)) if path else load_llm_config()
+
+
 def build_eval_deps(url: str, llm: str, stub: str, events: list[dict[str, Any]]) -> Deps:
     settings = get_settings()
 
@@ -87,13 +92,17 @@ def build_eval_deps(url: str, llm: str, stub: str, events: list[dict[str, Any]])
 
     if llm == "stub":
         gateway = build_gateway(
-            LLMMode.FAKE, load_llm_config(), settings, fake=FakeProvider(STUBS[stub]), on_event=sink
+            LLMMode.FAKE,
+            LLMConfig(),  # stub runs must not inherit real-provider rate limits
+            settings,
+            fake=FakeProvider(STUBS[stub]),
+            on_event=sink,
         )
     elif llm == "replay":
-        gateway = build_gateway(LLMMode.REPLAY, load_llm_config(), settings, on_event=sink)
+        gateway = build_gateway(LLMMode.REPLAY, _llm_config(), settings, on_event=sink)
     else:
         gateway = build_gateway(
-            LLMMode.LIVE, load_llm_config(), settings, record_cassettes=True, on_event=sink
+            LLMMode.LIVE, _llm_config(), settings, record_cassettes=True, on_event=sink
         )
     return Deps(
         sessionmaker=make_sessionmaker(url),

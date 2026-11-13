@@ -1,0 +1,7 @@
+{
+ "provider": "openrouter",
+ "model": "nvidia/nemotron-3.5-super-vl:free",
+ "text": "{\"case_type\": \"missing_item\", \"outcome\": \"ESCALATE\", \"amount_basis\": \"none\", \"confidence\": 0.3, \"rationale\": \"Customer is unsure about the issue; evidence is too thin to adjudicate a missing item claim.\", \"conflicting_evidence\": false, \"instructions_in_text\": false}",
+ "tokens_in": 791,
+ "tokens_out": 706
+}

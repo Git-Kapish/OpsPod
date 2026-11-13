@@ -1,0 +1,7 @@
+{
+ "provider": "openrouter",
+ "model": "nvidia/nemotron-3.5-super-vl:free",
+ "text": "{\"case_type\": \"no_show\", \"outcome\": \"FULL_REFUND\", \"amount_basis\": \"calculated\", \"confidence\": 0.9, \"rationale\": \"Driver no-show is supported by the rule calculation and disputed charge matches the rule amount. No fraud signals present.\", \"conflicting_evidence\": false, \"instructions_in_text\": false}",
+ "tokens_in": 817,
+ "tokens_out": 722
+}

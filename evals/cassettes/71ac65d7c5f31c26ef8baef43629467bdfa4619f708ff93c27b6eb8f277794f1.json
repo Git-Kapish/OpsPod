@@ -1,0 +1,7 @@
+{
+ "provider": "openrouter",
+ "model": "nvidia/nemotron-3.5-super-vl:free",
+ "text": "{\"case_type\": \"duplicate_charge\", \"outcome\": \"FULL_REFUND\", \"amount_basis\": \"calculated\", \"confidence\": 0.85, \"rationale\": \"Rule calculation confirms a duplicate payment matching the disputed charge; refund the calculated amount.\", \"conflicting_evidence\": false, \"instructions_in_text\": false}",
+ "tokens_in": 825,
+ "tokens_out": 682
+}

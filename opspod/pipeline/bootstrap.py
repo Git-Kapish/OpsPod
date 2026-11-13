@@ -6,7 +6,7 @@ from opspod.core.config import LLMMode, Settings
 from opspod.db.flags import DbChaos
 from opspod.db.session import make_sessionmaker
 from opspod.evals.stubs import STUBS
-from opspod.llm.config import load_llm_config
+from opspod.llm.config import LLMConfig, load_llm_config
 from opspod.llm.factory import build_gateway
 from opspod.llm.providers.fake import FakeProvider
 from opspod.observability.metrics import llm_event_sink
@@ -28,7 +28,7 @@ def build_deps(settings: Settings, *, record_cassettes: bool = False) -> Deps:
             settings.llm_mode,
             load_llm_config(Path(settings.llm_config))
             if settings.llm_config
-            else load_llm_config(),
+            else (LLMConfig() if settings.llm_mode is LLMMode.FAKE else load_llm_config()),
             settings,
             fake=fake,
             record_cassettes=record_cassettes,

@@ -11,3 +11,5 @@ htmlcov/
 *.egg-info/
 evals/results/*.tmp
 .playwright-mcp/
+.env.local
+.env.*.local

@@ -1,6 +1,11 @@
-generated_at: '2026-11-12T09:02:54+00:00'
+# Routing for live/replay runs. Model names and limits live here, never in code.
+# Recorded cassettes in evals/cassettes are keyed by model + prompt, so replay needs this model.
+# Free-tier limits are conservative placeholders; adjust to what OpenRouter reports for your key.
 tasks:
-  classify: []
-  analyze: []
-  draft_message: []
-limits: {}
+  classify: [{provider: openrouter, model: "nvidia/nemotron-3.5-super-vl:free"}]
+  analyze: [{provider: openrouter, model: "nvidia/nemotron-3.5-super-vl:free"}]
+  draft_message: [{provider: openrouter, model: "nvidia/nemotron-3.5-super-vl:free"}]
+limits:
+  openrouter: {requests_per_minute: 10, daily_calls: 45}
+timeout_s: 120   # a reasoning model can take 10+ s per call
+queue_wait_s: 30

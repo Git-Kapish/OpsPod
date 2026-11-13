@@ -14,7 +14,7 @@ class LLMMode(StrEnum):
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=(".env", ".env.local"), extra="ignore")
 
     database_url: str = "postgresql+asyncpg://opspod:opspod@localhost:5433/opspod"
     redis_url: str = "redis://localhost:6381/0"

@@ -43,7 +43,7 @@ async def main() -> int:
     )
     results, events = await harness.run_eval(cases, llm=llm, stub=args.stub)
     m = metrics.compute(results, events)
-    baseline = report.load_baseline()
+    baseline = report.load_baseline(llm)
     fails = metrics.gate(m, baseline)
     regress = metrics.regressions(m, baseline)
     run = report.make_run(m, args.split, llm, args.stub)
@@ -52,8 +52,10 @@ async def main() -> int:
     if not args.no_report:
         report.write_report(run, results, fails, regress)
     if args.update_baseline and not fails:
-        report.BASELINE.write_text(json.dumps(m, indent=1) + "\n", encoding="utf-8", newline="\n")
-        print(f"baseline updated: {report.BASELINE}")
+        report.baseline_path(llm).write_text(
+            json.dumps(m, indent=1) + "\n", encoding="utf-8", newline="\n"
+        )
+        print(f"baseline updated: {report.baseline_path(llm)}")
     print(
         f"correctness={m['correctness']:.1%} "
         f"compliance(safety)={m['policy_compliance_safety']:.1%} "

@@ -1,0 +1,7 @@
+{
+ "provider": "openrouter",
+ "model": "nvidia/nemotron-3.5-super-vl:free",
+ "text": "{\"case_type\": \"missing_item\", \"outcome\": \"FULL_REFUND\", \"amount_basis\": \"calculated\", \"confidence\": 0.8, \"rationale\": \"Customer reports a missing ramen delivery; rule calculation supports an item_missing refund. Single prior dispute does not override the claim.\", \"conflicting_evidence\": false, \"instructions_in_text\": false}",
+ "tokens_in": 823,
+ "tokens_out": 1174
+}

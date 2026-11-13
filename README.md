@@ -26,30 +26,40 @@ Everything is synthetic: no real payments, no real PII. See [`PRD.md`](PRD.md) f
 
 ## Results
 
-Measured by `make eval` on the dev split (158 cases: 135 generated + 23 hand-written). Full report,
-per-tag pass rates and the release gate: [`EVALS.md`](EVALS.md).
+Real model: **`nvidia/nemotron-3.5-super-vl:free`** via OpenRouter (free tier), recorded to
+cassettes with `make eval-live` and replayed free in CI by `make eval`. Full report, per-tag pass
+rates and the release gate: [`EVALS.md`](EVALS.md).
 
-| Metric | Result | Target |
-|---|---|---|
-| Resolution correctness | 100% | >= 90% |
-| Policy compliance, safety subset (63 cases) | 100% | 100% |
-| Adversarial/fraud escalation recall | 100% | >= 95% |
-| Tool-selection accuracy | 100% | >= 95% |
-| Injection cases that caused an action | 0 | 0 |
-| Case latency p95 (stub LLM) | 3.3 s | < 30 s |
-| Auto-resolve rate | 55% | >= 60% (stretch) |
+| Metric | Dev (158 cases) | Holdout (55 cases, run once) | Target |
+|---|---|---|---|
+| Resolution correctness | 92.4% | 90.9% | >= 90% |
+| Route accuracy | 98.1% | 98.2% | |
+| Policy compliance, safety subset | 100% | 100% | 100% |
+| Adversarial/fraud escalation recall | 100% | 100% | >= 95% |
+| Tool-selection accuracy | 98.1% | 98.2% | >= 95% |
+| Injection cases that caused an action | 0 | 0 | 0 |
+| Schema-valid LLM output | 100% (12/12 calls) | 100% (5/5 calls) | >= 99% |
+| Case latency p95 | 4.6 s | 6.3 s | < 30 s |
+| Auto-resolve rate | 55% | | >= 60% (stretch) |
 
-The holdout split (55 cases) was run once as a release check and also passed the gate. A
-deliberately regressed prompt is blocked by the gate (a confident always-refund prompt:
+**What the model gets wrong, and what it doesn't.** Every miss is an *ambiguous* case (the only
+kind that reaches the LLM, about 8% of traffic). Deterministic cases, fraud, injection and boundary
+cases are 100% on dev. On ambiguous cases the model usually proposes the full rule amount (or a
+credit) where the synthetic label expects a half split, so it scores 0/12 on dev and 1/6 on holdout
+for those. The label ("mixed fault means half") is my convention, not ground truth, so read this as
+"the model does not follow that convention", not "the model is wrong". Safety is unaffected: LLM
+proposals always go to a human for review (`llm_proposals_auto: false`), and on dev the model escalated three
+ambiguous cases instead (the safe direction). Latency is dominated by the model: a reasoning
+model, about 10 s and about 1,000 completion tokens per call, on about 8% of cases.
+
+Rule-only (stub-LLM) runs are separate and still gate CI changes to non-LLM code: 100% on dev and
+holdout. A deliberately regressed prompt is blocked by the gate (an always-refund prompt:
 correctness -7.6 points; a malformed-output prompt: schema-valid rate 0%).
 
-> **Read this before quoting the numbers.** The LLM in these runs is a fixed, label-blind *stub*,
-> because no provider keys were available to record real-model cassettes. The numbers prove the
-> pipeline, the policy engine and the safety layers. They say **nothing yet about real
-> free-tier model quality**; that needs `make probe` and `make eval-live` with real keys. The
-> gate then replays the recorded cassettes at zero cost. Perfect dev scores also mean the dev set
-> is easy for a rules-first system; the holdout and hand-written boundary cases are the
-> better evidence.
+> Caveats. 12 + 5 real calls is a small sample; the per-tag figures above are not statistically
+> strong. Replay latency is cassette speed, so latency figures come from the live runs. Dev
+> was visible while building the prompt and holdout was run once, but with a 55-case set a few
+> cases move the percentage a lot.
 
 Other measured evidence:
 
@@ -75,7 +85,8 @@ make chaos                  # failure-injection suite
 make alerts-test            # promtool unit tests for the alert rules
 ```
 
-Run it locally (a stub LLM is used when `LLM_MODE=fake`, the default):
+Run it locally (a stub LLM is used when `LLM_MODE=fake`, the default; put your
+`OPENROUTER_API_KEY` in `.env.local`, which is git-ignored, and set `LLM_MODE=live` for real calls):
 
 ```bash
 make dev                    # API on :8000, console at /console/login
@@ -108,7 +119,8 @@ databases.
 
 Built and tested: everything above. Not built or not yet measured:
 
-- Real-model quality (no provider keys here): `make probe`, `make eval-live`.
+- Real-model quality beyond one free model on a small set (see Results): only
+  `nvidia/nemotron-3.5-super-vl:free` was run, and the Gemini provider is unit-tested but unexercised.
 - Production auth (API keys are a placeholder), real data integrations (context is
   fixture-backed behind a `ContextRepo` protocol), the PRD stretch items (second workflow, MCP
   server).

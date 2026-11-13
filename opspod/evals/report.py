@@ -10,7 +10,15 @@ from opspod.evals.metrics import CaseResult
 
 ROOT = Path(__file__).resolve().parents[2]
 RESULTS_DIR = ROOT / "evals" / "results"
-BASELINE = ROOT / "evals" / "baseline.json"
+BASELINE = ROOT / "evals" / "baseline.json"  # stub LLM
+BASELINE_REAL = ROOT / "evals" / "baseline-real.json"  # recorded real-model cassettes
+
+
+def baseline_path(llm: str) -> Path:
+    """Stub and real-model runs are different populations; never compare across them."""
+    return BASELINE if llm == "stub" else BASELINE_REAL
+
+
 EVALS_MD = ROOT / "EVALS.md"
 
 TARGETS: list[tuple[str, str, str, Callable[[Any], bool]]] = [
@@ -30,8 +38,9 @@ TARGETS: list[tuple[str, str, str, Callable[[Any], bool]]] = [
 ]
 
 
-def load_baseline() -> dict[str, Any] | None:
-    return json.loads(BASELINE.read_text(encoding="utf-8")) if BASELINE.is_file() else None
+def load_baseline(llm: str = "stub") -> dict[str, Any] | None:
+    path = baseline_path(llm)
+    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
 
 
 def save_run(run: dict[str, Any], label: str) -> Path:

@@ -1,0 +1,7 @@
+{
+ "provider": "openrouter",
+ "model": "nvidia/nemotron-3.5-super-vl:free",
+ "text": "{\"case_type\": \"missing_item\", \"outcome\": \"PARTIAL_REFUND\", \"amount_basis\": \"calculated\", \"confidence\": 0.85, \"rationale\": \"One delivery item is missing; refund the calculated item amount rather than the full disputed order total.\", \"conflicting_evidence\": false, \"instructions_in_text\": false}",
+ "tokens_in": 820,
+ "tokens_out": 2348
+}

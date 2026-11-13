@@ -78,6 +78,8 @@ writes money rows. Only `policy/` decides routes.
 7. **Fixture-backed context repository.** The synthetic domain tables from the PRD (riders, trips,
    payments) are served from the golden dataset through a `ContextRepo` protocol. Swapping in a
    DB-backed repo touches one class.
-8. **Stub LLM for CI evals.** Without provider keys no cassettes can be recorded, so the gate runs
-   a label-blind stub and says so in `EVALS.md`. With cassettes recorded (`make eval-live`) the
-   same gate replays them at zero cost.
+8. **Two eval populations.** Stub-LLM runs (label-blind, no network) gate changes to rule code and
+   always run; real-model runs are recorded to cassettes (`make eval-live`) and replayed free in CI
+   (`make eval`). Each has its own baseline (`evals/baseline.json`, `evals/baseline-real.json`) and
+   they are never compared with each other. Stub runs ignore `config/llm.yaml` so real-provider
+   rate limits cannot leak into them.

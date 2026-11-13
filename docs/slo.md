@@ -23,10 +23,10 @@
 
 | SLI | Value | Source |
 |---|---|---|
-| p95 case latency | 3.3 s on 158 dev cases with the stub LLM | `EVALS.md` (no network LLM in that figure) |
+| p95 case latency | 4.6 s dev, 6.3 s holdout with `nvidia/nemotron-3.5-super-vl:free` | live runs, `evals/results/live-*.json` |
 | Pipeline crashes | 0 of 158 | `EVALS.md` |
 | Unsafe auto-actions | 0 of 63 safety-subset cases | `EVALS.md` |
 
-Latency with real free-tier models has not been measured yet; free tiers are rate limited and
-slower, so expect LLM-path cases (about 10% of traffic) to dominate the tail. Re-measure after the
-first live `make eval-live` run.
+LLM-path cases (about 8% of traffic) take roughly 10 s each with the reasoning model, so they
+dominate the tail; the p95 is within the 30 s SLO but p99 would not be far from it. Rate limits on
+the free tier (placeholder 10 req/min) are the main risk under load: see PM-001.

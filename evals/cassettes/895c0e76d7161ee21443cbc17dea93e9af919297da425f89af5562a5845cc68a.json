@@ -1,0 +1,7 @@
+{
+ "provider": "openrouter",
+ "model": "nvidia/nemotron-3.5-super-vl:free",
+ "text": "{\"case_type\": \"wrong_fare\", \"outcome\": \"PARTIAL_REFUND\", \"amount_basis\": \"calculated\", \"confidence\": 0.8, \"rationale\": \"Rule confirms the fare exceeded the quote by 766 minor units; refund the overcharged amount. Customer uncertainty about the cause does not contradict the overcharge.\", \"conflicting_evidence\": false, \"instructions_in_text\": false}",
+ "tokens_in": 825,
+ "tokens_out": 959
+}

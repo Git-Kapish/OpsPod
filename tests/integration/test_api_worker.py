@@ -1,3 +1,4 @@
+import os
 import uuid
 
 import httpx
@@ -5,6 +6,7 @@ import pytest
 from arq import create_pool
 from arq.connections import RedisSettings
 from arq.worker import Worker
+from redis.exceptions import ConnectionError as RedisConnectionError
 from sqlalchemy import select
 
 from opspod.api.app import create_app
@@ -139,8 +141,10 @@ async def test_arq_worker_processes_job_and_dedupes_duplicates(sessionmaker_):
     rs = RedisSettings.from_dsn(get_settings().redis_url)
     try:
         pool = await create_pool(rs)
-    except OSError as exc:
-        pytest.skip(f"redis not reachable: {exc}")
+    except (OSError, RedisConnectionError) as exc:
+        if os.getenv("CI"):
+            raise  # CI provides Redis; a missing service must not hide
+        pytest.skip(f"redis not reachable (run `make up`): {exc}")
     jobs = [await pool.enqueue_job("process_case", str(cid), _job_id=str(cid)) for _ in range(3)]
     assert jobs[0] is not None and jobs[1] is None and jobs[2] is None  # duplicates collapse
 
